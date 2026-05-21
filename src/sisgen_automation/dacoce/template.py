@@ -13,6 +13,9 @@ from openpyxl.worksheet.datavalidation import DataValidation
 
 from sisgen_automation.cenhid.template import parse_period
 
+from sisgen_automation.cenhid.catalog import load_cenhid_catalog
+from sisgen_automation.center.catalog import load_center_catalog
+
 DACOCE_HEADERS = [
     "CANOREG",
     "CMESREG",
@@ -125,6 +128,46 @@ def _read_base_rows(source_dbf_path: Path, base_period: str) -> list[dict[str, s
 
     return rows
 
+def _read_rows_from_catalogs(
+    cenhid_catalog_path: Path,
+    center_catalog_path: Path,
+) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    seen_keys: set[tuple[str, str]] = set()
+
+    cenhid_catalog = load_cenhid_catalog(cenhid_catalog_path)
+
+    for unit in cenhid_catalog.values():
+        key = (unit.ccodcon, "H")
+
+        if key in seen_keys:
+            continue
+
+        seen_keys.add(key)
+        rows.append(
+            {
+                "CCODCON": unit.ccodcon,
+                "CTIPCEN": "H",
+            }
+        )
+
+    center_catalog = load_center_catalog(center_catalog_path)
+
+    for unit in center_catalog.values():
+        key = (unit.ccodcon, "T")
+
+        if key in seen_keys:
+            continue
+
+        seen_keys.add(key)
+        rows.append(
+            {
+                "CCODCON": unit.ccodcon,
+                "CTIPCEN": "T",
+            }
+        )
+
+    return sorted(rows, key=lambda item: (item["CTIPCEN"], item["CCODCON"]))
 
 def _write_instructions_sheet(workbook: Workbook, period: str, base_period: str) -> None:
     sheet = workbook.create_sheet("INSTRUCCIONES")
@@ -246,29 +289,51 @@ def _apply_format(sheet, last_row: int) -> None:
 
 def create_dacoce_template(
     period: str,
-    source_dbf_path: Path,
+    source_dbf_path: Path | None = None,
     base_period: str | None = None,
     output_path: Path | None = None,
+    cenhid_catalog_path: Path | None = None,
+    center_catalog_path: Path | None = None,
 ) -> DacoceTemplateResult:
     year, month = parse_period(period)
 
-    if base_period is None:
-        base_period = _infer_latest_period_before_target(
-            source_dbf_path=source_dbf_path,
-            target_period=period,
-        )
-    else:
-        parse_period(base_period)
+    use_catalogs = cenhid_catalog_path is not None or center_catalog_path is not None
 
-        if base_period >= period:
+    if use_catalogs:
+        if cenhid_catalog_path is None or center_catalog_path is None:
             raise ValueError(
-                "El periodo base debe ser anterior al periodo de la plantilla."
+                "Para generar DACOCE desde catálogos debes indicar "
+                "cenhid_catalog_path y center_catalog_path."
             )
 
-    base_rows = _read_base_rows(
-        source_dbf_path=source_dbf_path,
-        base_period=base_period,
-    )
+        base_period = "catálogos locales"
+        base_rows = _read_rows_from_catalogs(
+            cenhid_catalog_path=cenhid_catalog_path,
+            center_catalog_path=center_catalog_path,
+        )
+    else:
+        if source_dbf_path is None:
+            raise ValueError(
+                "Debes indicar source_dbf_path o usar catálogos CENHID/CENTER."
+            )
+
+        if base_period is None:
+            base_period = _infer_latest_period_before_target(
+                source_dbf_path=source_dbf_path,
+                target_period=period,
+            )
+        else:
+            parse_period(base_period)
+
+            if base_period >= period:
+                raise ValueError(
+                    "El periodo base debe ser anterior al periodo de la plantilla."
+                )
+
+        base_rows = _read_base_rows(
+            source_dbf_path=source_dbf_path,
+            base_period=base_period,
+        )
 
     if output_path is None:
         output_path = Path("templates") / f"DACOCE_{period.replace('-', '_')}_template.xlsx"

@@ -595,11 +595,21 @@ def create_dacoce_template_command(
         "-p",
         help="Periodo de la plantilla en formato YYYY-MM. Ejemplo: 2026-01.",
     ),
-    source: Path = typer.Option(
-        ...,
+    source: Optional[Path] = typer.Option(
+        None,
         "--source",
         "-s",
         help="Ruta del DACOCE.DBF histórico fuente.",
+    ),
+    cenhid_catalog: Optional[Path] = typer.Option(
+        None,
+        "--cenhid-catalog",
+        help="Ruta del catálogo local CENHID en YAML.",
+    ),
+    center_catalog: Optional[Path] = typer.Option(
+        None,
+        "--center-catalog",
+        help="Ruta del catálogo local CENTER en YAML.",
     ),
     base_period: Optional[str] = typer.Option(
         None,
@@ -620,6 +630,8 @@ def create_dacoce_template_command(
             source_dbf_path=source,
             base_period=base_period,
             output_path=output,
+            cenhid_catalog_path=cenhid_catalog,
+            center_catalog_path=center_catalog,
         )
     except ValueError as error:
         console.print(f"[bold red]Error:[/bold red] {error}")
