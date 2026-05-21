@@ -38,6 +38,8 @@ from sisgen_automation.g1.hydro_sources import (
 
 from sisgen_automation.g1.hydro_txt import G1HydroTxtResult, create_g1_hydro_txt
 
+from sisgen_automation.dacoce.template import DacoceTemplateResult, create_dacoce_template
+
 app = typer.Typer(
     help="Herramientas para automatizar formatos SISGEN.",
     no_args_is_help=True,
@@ -559,6 +561,63 @@ def create_g1_hydro_txt_command(
         raise typer.Exit(code=1) from error
 
     _render_g1_hydro_txt_summary(result)
+
+def _render_dacoce_template_summary(result: DacoceTemplateResult) -> None:
+    console.print("")
+    console.print(f"[bold green]Plantilla DACOCE generada:[/bold green] {result.output_path}")
+    console.print("")
+
+    table = Table(title=f"Resumen plantilla DACOCE {result.period}")
+    table.add_column("Métrica")
+    table.add_column("Valor", justify="right")
+
+    table.add_row("Periodo", result.period)
+    table.add_row("Periodo base", result.base_period)
+    table.add_row("Filas", str(result.row_count))
+
+    console.print(table)
+    console.print("[bold]Columnas editables:[/bold] NCONPRO, NPRONET, NMAXDEM")
+
+
+@app.command("create-dacoce-template")
+def create_dacoce_template_command(
+    period: str = typer.Option(
+        ...,
+        "--period",
+        "-p",
+        help="Periodo de la plantilla en formato YYYY-MM. Ejemplo: 2026-01.",
+    ),
+    source: Path = typer.Option(
+        ...,
+        "--source",
+        "-s",
+        help="Ruta del DACOCE.DBF histórico fuente.",
+    ),
+    base_period: Optional[str] = typer.Option(
+        None,
+        "--base-period",
+        help="Periodo base para copiar centrales en formato YYYY-MM. Si se omite, usa el último periodo válido.",
+    ),
+    output: Optional[Path] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Ruta del Excel generado.",
+    ),
+) -> None:
+    """Genera una plantilla Excel mensual para DACOCE."""
+    try:
+        result = create_dacoce_template(
+            period=period,
+            source_dbf_path=source,
+            base_period=base_period,
+            output_path=output,
+        )
+    except ValueError as error:
+        console.print(f"[bold red]Error:[/bold red] {error}")
+        raise typer.Exit(code=1) from error
+
+    _render_dacoce_template_summary(result)
     
 if __name__ == "__main__":
     app()
