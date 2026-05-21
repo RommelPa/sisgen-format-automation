@@ -193,152 +193,113 @@ def _company_period_box(year: str, month: str) -> list[str]:
         "",
     ]
 
-
 def _thermal_header() -> list[str]:
     return [
         *_box_title("C E N T R A L E S   T E R M O E L E C T R I C A S", THERMAL_WIDTHS),
-        _box_row(
+        _box_span_row(
             [
-                "",
-                "",
-                "GRUPO",
-                "",
-                "POTENCIA",
-                "",
-                "PROCCION",
-                "BRUTA",
-                "",
-                "Consumo",
-                "Producción",
-                "Máxima",
-                "Horas de",
-                "Horas",
-                "Horas de",
-                "Consumo de",
-                "",
-                "Consumo de",
+                ("", 1, "center"),
+                ("GRUPO", 3, "center"),
+                ("POTENCIA", 2, "center"),
+                ("PRODUCCION BRUTA", 3, "center"),
+                ("Consumo", 1, "center"),
+                ("Producción", 1, "center"),
+                ("Máxima", 1, "center"),
+                ("Horas de", 1, "center"),
+                ("Horas", 1, "center"),
+                ("Horas de", 1, "center"),
+                ("Consumo de Combustible", 2, "center"),
+                ("Consumo de", 1, "center"),
             ],
             THERMAL_WIDTHS,
-            ["center"] * len(THERMAL_WIDTHS),
         ),
-        _box_row(
+        _box_span_row(
             [
-                "Nombre de la Central",
-                "Tipo",
-                "Nombre",
-                "Est.",
-                "Instalada",
-                "Efectiva",
-                "H.P. (3)",
-                "H.F.P. (3)",
-                "Total",
-                "Propio",
-                "Neta",
-                "Demanda",
-                "Mant.",
-                "de",
-                "Salidas",
-                "Tipo",
-                "Cantidad",
-                "Lubricante",
+                ("Nombre de la Central", 1, "center"),
+                ("Tipo   Nombre       Est.", 3, "center"),
+                ("Instalada  Efectiva", 2, "center"),
+                ("H.P. (3)     H.F.P. (3)      Total", 3, "center"),
+                ("Propio", 1, "center"),
+                ("Neta", 1, "center"),
+                ("Demanda", 1, "center"),
+                ("Mant.", 1, "center"),
+                ("de", 1, "center"),
+                ("Salidas", 1, "center"),
+                ("Tipo(4) Cantidad", 2, "center"),
+                ("Lubricante", 1, "center"),
             ],
             THERMAL_WIDTHS,
-            ["center"] * len(THERMAL_WIDTHS),
         ),
-        _box_row(
+        _box_span_row(
             [
-                "",
-                "(1)",
-                "o Número",
-                "(2)",
-                "(MW)",
-                "(MW)",
-                "(MWh)",
-                "(MWh)",
-                "(MWh)",
-                "(MWh)",
-                "(MWh)",
-                "(MW)",
-                "Program.",
-                "Operación",
-                "Forzadas",
-                "(4)",
-                "",
-                "(Galones)",
+                ("", 1, "center"),
+                ("(1)   o Número      (2)", 3, "center"),
+                ("(MW)      (MW)", 2, "center"),
+                ("(MWh)        (MWh)          (MWh)", 3, "center"),
+                ("(MWh)", 1, "center"),
+                ("(MWh)", 1, "center"),
+                ("(MW)", 1, "center"),
+                ("Program.", 1, "center"),
+                ("Operación", 1, "center"),
+                ("Forzadas", 1, "center"),
+                ("", 2, "center"),
+                ("(Galones)", 1, "center"),
             ],
             THERMAL_WIDTHS,
-            ["center"] * len(THERMAL_WIDTHS),
         ),
         _box_mid(THERMAL_WIDTHS),
     ]
 
-
 def _hydro_header() -> list[str]:
     return [
         *_box_title("C E N T R A L E S   H I D R O E L E C T R I C A S", HYDRO_WIDTHS),
-        _box_row(
+        _box_span_row(
             [
-                "",
-                "GRUPO",
-                "",
-                "POTENCIA",
-                "",
-                "PRODUCCION",
-                "BRUTA",
-                "",
-                "Consumo",
-                "Producción",
-                "Máxima",
-                "Horas de",
-                "Horas",
-                "Horas de",
+                ("", 1, "center"),
+                ("GRUPO", 2, "center"),
+                ("POTENCIA", 2, "center"),
+                ("PRODUCCION BRUTA", 3, "center"),
+                ("Consumo", 1, "center"),
+                ("Producción", 1, "center"),
+                ("Máxima", 1, "center"),
+                ("Horas de", 1, "center"),
+                ("Horas", 1, "center"),
+                ("Horas de", 1, "center"),
             ],
             HYDRO_WIDTHS,
-            ["center"] * len(HYDRO_WIDTHS),
         ),
-        _box_row(
+        _box_span_row(
             [
-                "Nombre de la Central",
-                "Nombre",
-                "Estado",
-                "Instalada",
-                "Efectiva",
-                "H.P. (3)",
-                "H.F.P. (3)",
-                "Total",
-                "Propio",
-                "Neta",
-                "Demanda",
-                "Mant.",
-                "de",
-                "Salidas",
+                ("Nombre de la Central", 1, "center"),
+                ("Nombre     Estado", 2, "center"),
+                ("Instalada  Efectiva", 2, "center"),
+                ("H.P. (3)     H.F.P. (3)     Total", 3, "center"),
+                ("Propio", 1, "center"),
+                ("Neta", 1, "center"),
+                ("Demanda", 1, "center"),
+                ("Mant.", 1, "center"),
+                ("de", 1, "center"),
+                ("Salidas", 1, "center"),
             ],
             HYDRO_WIDTHS,
-            ["center"] * len(HYDRO_WIDTHS),
         ),
-        _box_row(
+        _box_span_row(
             [
-                "",
-                "o Número",
-                "(2)",
-                "(MW)",
-                "(MW)",
-                "(MWh)",
-                "(MWh)",
-                "(MWh)",
-                "(MWh)",
-                "(MWh)",
-                "(MW)",
-                "Program.",
-                "Operación",
-                "Forzadas",
+                ("", 1, "center"),
+                ("o Número     (2)", 2, "center"),
+                ("(MW)      (MW)", 2, "center"),
+                ("(MWh)         (MWh)        (MWh)", 3, "center"),
+                ("(MWh)", 1, "center"),
+                ("(MWh)", 1, "center"),
+                ("(MW)", 1, "center"),
+                ("Program.", 1, "center"),
+                ("Operación", 1, "center"),
+                ("Forzadas", 1, "center"),
             ],
             HYDRO_WIDTHS,
-            ["center"] * len(HYDRO_WIDTHS),
         ),
         _box_mid(HYDRO_WIDTHS),
     ]
-
 
 def _thermal_group_row(row: G1GroupRow) -> str:
     return _box_row(
@@ -472,6 +433,19 @@ def _hydro_total_row(label: str, block: G1CentralBlock | None, blocks: list[G1Ce
         HYDRO_ALIGNS,
     )
 
+def _box_span_row(
+    values: list[tuple[str, int, Align]],
+    widths: list[int],
+) -> str:
+    cells: list[str] = []
+    start = 0
+
+    for text, column_count, align in values:
+        span_width = sum(widths[start : start + column_count]) + column_count - 1
+        cells.append(_fit(text, span_width, align))
+        start += column_count
+
+    return "│" + "│".join(cells) + "│"
 
 def _render_thermal_section(blocks: list[G1CentralBlock]) -> list[str]:
     lines = _thermal_header()
