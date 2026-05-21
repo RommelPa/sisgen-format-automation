@@ -40,6 +40,12 @@ from sisgen_automation.g1.hydro_txt import G1HydroTxtResult, create_g1_hydro_txt
 
 from sisgen_automation.dacoce.template import DacoceTemplateResult, create_dacoce_template
 
+from sisgen_automation.dacoce.template_validation import (
+    DacoceTemplateValidationResult,
+    validate_dacoce_template,
+    write_dacoce_template_validation_markdown,
+)
+
 app = typer.Typer(
     help="Herramientas para automatizar formatos SISGEN.",
     no_args_is_help=True,
@@ -618,6 +624,75 @@ def create_dacoce_template_command(
         raise typer.Exit(code=1) from error
 
     _render_dacoce_template_summary(result)
+
+def _render_dacoce_template_validation_summary(
+    result: DacoceTemplateValidationResult,
+    output_path: Path,
+) -> None:
+    console.print("")
+    console.print(f"[bold green]Validación de plantilla DACOCE generada:[/bold green] {output_path}")
+    console.print("")
+
+    table = Table(title=f"Resumen validación plantilla DACOCE {result.period}")
+    table.add_column("Métrica")
+    table.add_column("Valor", justify="right")
+
+    table.add_row("Filas leídas", str(result.rows_read))
+    table.add_row("Filas hidroeléctricas", str(result.hydro_rows))
+    table.add_row("Filas termoeléctricas", str(result.thermal_rows))
+    table.add_row("Errores", str(len(result.errors)))
+    table.add_row("Advertencias", str(len(result.warnings)))
+
+    console.print(table)
+
+    if result.has_errors:
+        console.print("[bold red]La plantilla DACOCE no está lista para exportar.[/bold red]")
+    elif result.warnings:
+        console.print("[bold yellow]La plantilla DACOCE tiene advertencias.[/bold yellow]")
+    else:
+        console.print("[bold green]La plantilla DACOCE está lista para exportar.[/bold green]")
+
+
+@app.command("validate-dacoce-template")
+def validate_dacoce_template_command(
+    template_path: Path = typer.Argument(..., help="Ruta de la plantilla DACOCE en Excel."),
+    period: str = typer.Option(
+        ...,
+        "--period",
+        "-p",
+        help="Periodo esperado en formato YYYY-MM. Ejemplo: 2026-01.",
+    ),
+    output: Optional[Path] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Ruta del reporte Markdown generado.",
+    ),
+    fail_on_errors: bool = typer.Option(
+        False,
+        "--fail-on-errors",
+        help="Termina con código de error si se encuentran errores.",
+    ),
+) -> None:
+    """Valida una plantilla mensual DACOCE antes de generar DBF."""
+    try:
+        result = validate_dacoce_template(
+            template_path=template_path,
+            period=period,
+        )
+    except ValueError as error:
+        console.print(f"[bold red]Error:[/bold red] {error}")
+        raise typer.Exit(code=1) from error
+
+    output_path = output
+    if output_path is None:
+        output_path = Path("reports") / f"{template_path.stem}_validation.md"
+
+    write_dacoce_template_validation_markdown(result, output_path)
+    _render_dacoce_template_validation_summary(result, output_path)
+
+    if fail_on_errors and result.has_errors:
+        raise typer.Exit(code=1)
     
 if __name__ == "__main__":
     app()
