@@ -42,3 +42,7 @@ reports/*
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Configuración local real
+config/local/*
+!config/local/.gitkeep

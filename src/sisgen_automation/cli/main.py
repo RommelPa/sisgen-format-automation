@@ -9,6 +9,12 @@ from rich.table import Table
 
 from sisgen_automation.dbf.profile import DbfProfile, read_dbf_profile, write_profile_markdown
 
+from sisgen_automation.cenhid.validate import (
+    CenhidValidationResult,
+    validate_cenhid_dbf,
+    write_validation_markdown,
+)
+
 app = typer.Typer(
     help="Herramientas para automatizar formatos SISGEN.",
     no_args_is_help=True,
@@ -82,6 +88,67 @@ def profile_dbf(
     write_profile_markdown(profile, output_path)
     _render_profile_summary(profile, output_path)
 
+def _render_cenhid_validation_summary(
+    result: CenhidValidationResult,
+    output_path: Path,
+) -> None:
+    console.print("")
+    console.print(f"[bold green]Validación CENHID generada:[/bold green] {output_path}")
+    console.print("")
+
+    table = Table(title=f"Resumen de validación {result.dbf_path.name}")
+    table.add_column("Métrica")
+    table.add_column("Valor", justify="right")
+
+    table.add_row("Registros leídos", str(result.record_count))
+    table.add_row("Unidades en catálogo", str(result.catalog_unit_count))
+    table.add_row("Periodos válidos", str(len(result.period_counts)))
+    table.add_row("Errores", str(len(result.errors)))
+    table.add_row("Advertencias", str(len(result.warnings)))
+
+    console.print(table)
+
+    if result.has_errors:
+        console.print("[bold red]La validación encontró errores.[/bold red]")
+    elif result.warnings:
+        console.print("[bold yellow]La validación encontró advertencias.[/bold yellow]")
+    else:
+        console.print("[bold green]La validación no encontró observaciones.[/bold green]")
+
+
+@app.command("validate-cenhid")
+def validate_cenhid(
+    dbf_path: Path = typer.Argument(..., help="Ruta del archivo CENHID.DBF a validar."),
+    catalog: Path = typer.Option(
+        ...,
+        "--catalog",
+        "-c",
+        help="Ruta del catálogo local CENHID en YAML.",
+    ),
+    output: Optional[Path] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Ruta del reporte Markdown generado.",
+    ),
+    fail_on_errors: bool = typer.Option(
+        False,
+        "--fail-on-errors",
+        help="Termina con código de error si se encuentran errores de validación.",
+    ),
+) -> None:
+    """Valida CENHID contra estructura, catálogo y reglas de negocio."""
+    result = validate_cenhid_dbf(dbf_path=dbf_path, catalog_path=catalog)
+
+    output_path = output
+    if output_path is None:
+        output_path = Path("reports") / f"{dbf_path.stem}_validation.md"
+
+    write_validation_markdown(result, output_path)
+    _render_cenhid_validation_summary(result, output_path)
+
+    if fail_on_errors and result.has_errors:
+        raise typer.Exit(code=1)
 
 if __name__ == "__main__":
     app()
