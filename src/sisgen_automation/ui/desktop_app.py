@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QPushButton,
+    QTabWidget,
     QTextEdit,
     QVBoxLayout,
     QWidget,
@@ -137,7 +138,7 @@ class MainWindow(QMainWindow):
         self.worker: G1Worker | None = None
 
         self.setWindowTitle("SISGEN Format Automation")
-        self.resize(980, 680)
+        self.resize(1100, 760)
 
         self.period_input = QLineEdit("2025-12")
         self.raw_dir_input = QLineEdit(str(Path("data/raw")))
@@ -145,12 +146,14 @@ class MainWindow(QMainWindow):
         self.cenhid_catalog_input = QLineEdit(str(Path("config/local/cenhid_units.yaml")))
         self.center_catalog_input = QLineEdit(str(Path("config/local/center_units.yaml")))
 
-        self.validate_button = QPushButton("Validar fuentes G1")
-        self.generate_button = QPushButton("Generar TXT G1")
+        self.validate_g1_button = QPushButton("Validar fuentes G1")
+        self.generate_g1_button = QPushButton("Generar TXT G1")
         self.clear_log_button = QPushButton("Limpiar logs")
 
         self.log_output = QTextEdit()
         self.log_output.setReadOnly(True)
+
+        self.tabs = QTabWidget()
 
         self._build_ui()
         self._connect_events()
@@ -160,17 +163,30 @@ class MainWindow(QMainWindow):
         root_layout = QVBoxLayout(root)
 
         title = QLabel("Automatización de formatos SISGEN")
-        title.setStyleSheet("font-size: 20px; font-weight: bold;")
+        title.setStyleSheet("font-size: 22px; font-weight: bold;")
 
         subtitle = QLabel(
-            "MVP desktop para validar fuentes CENHID, CENTER, DACOCE y generar Formato G1 TXT."
+            "Herramienta desktop para preparar DBF mensuales y generar el Formato G1."
         )
         subtitle.setStyleSheet("color: #555;")
 
         root_layout.addWidget(title)
         root_layout.addWidget(subtitle)
+        root_layout.addWidget(self.tabs)
 
-        config_group = QGroupBox("Configuración")
+        self.tabs.addTab(self._build_config_tab(), "Configuración")
+        self.tabs.addTab(self._build_templates_tab(), "Plantillas")
+        self.tabs.addTab(self._build_export_tab(), "Exportar DBF")
+        self.tabs.addTab(self._build_g1_tab(), "Generar G1")
+        self.tabs.addTab(self._build_logs_tab(), "Logs")
+
+        self.setCentralWidget(root)
+
+    def _build_config_tab(self) -> QWidget:
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+
+        config_group = QGroupBox("Configuración general")
         form = QFormLayout(config_group)
 
         form.addRow("Periodo YYYY-MM:", self.period_input)
@@ -185,23 +201,103 @@ class MainWindow(QMainWindow):
             self._path_row(self.center_catalog_input, self._select_center_catalog),
         )
 
-        root_layout.addWidget(config_group)
+        help_box = QLabel(
+            "Esta configuración se usa en las pestañas de generación. "
+            "Los archivos esperados en la carpeta DBF son CENHID.DBF, CENTER.DBF y DACOCE.DBF."
+        )
+        help_box.setWordWrap(True)
+        help_box.setStyleSheet("color: #555;")
+
+        layout.addWidget(config_group)
+        layout.addWidget(help_box)
+        layout.addStretch()
+
+        return tab
+
+    def _build_templates_tab(self) -> QWidget:
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+
+        title = QLabel("Plantillas mensuales")
+        title.setStyleSheet("font-size: 18px; font-weight: bold;")
+
+        message = QLabel(
+            "Pendiente para el siguiente bloque: aquí se generarán las plantillas Excel "
+            "de CENHID, CENTER y DACOCE usando el periodo y catálogos configurados."
+        )
+        message.setWordWrap(True)
+
+        layout.addWidget(title)
+        layout.addWidget(message)
+        layout.addStretch()
+
+        return tab
+
+    def _build_export_tab(self) -> QWidget:
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+
+        title = QLabel("Exportar DBF mensuales")
+        title.setStyleSheet("font-size: 18px; font-weight: bold;")
+
+        message = QLabel(
+            "Pendiente para el siguiente bloque: aquí se validarán plantillas llenas "
+            "y se exportarán los nuevos CENHID.DBF, CENTER.DBF y DACOCE.DBF."
+        )
+        message.setWordWrap(True)
+
+        layout.addWidget(title)
+        layout.addWidget(message)
+        layout.addStretch()
+
+        return tab
+
+    def _build_g1_tab(self) -> QWidget:
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+
+        title = QLabel("Formato G1")
+        title.setStyleSheet("font-size: 18px; font-weight: bold;")
+
+        description = QLabel(
+            "Valida CENHID + CENTER + DACOCE y genera el TXT del Formato G1."
+        )
+        description.setWordWrap(True)
+
+        actions_group = QGroupBox("Acciones")
+        actions_layout = QHBoxLayout(actions_group)
+
+        actions_layout.addWidget(self.validate_g1_button)
+        actions_layout.addWidget(self.generate_g1_button)
+        actions_layout.addStretch()
+
+        note = QLabel(
+            "El TXT se generará en la carpeta de salida configurada. "
+            "Si las fuentes tienen errores, la generación se bloquea."
+        )
+        note.setWordWrap(True)
+        note.setStyleSheet("color: #555;")
+
+        layout.addWidget(title)
+        layout.addWidget(description)
+        layout.addWidget(actions_group)
+        layout.addWidget(note)
+        layout.addStretch()
+
+        return tab
+
+    def _build_logs_tab(self) -> QWidget:
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
 
         actions_layout = QHBoxLayout()
-        actions_layout.addWidget(self.validate_button)
-        actions_layout.addWidget(self.generate_button)
         actions_layout.addWidget(self.clear_log_button)
         actions_layout.addStretch()
 
-        root_layout.addLayout(actions_layout)
+        layout.addLayout(actions_layout)
+        layout.addWidget(self.log_output)
 
-        log_group = QGroupBox("Logs")
-        log_layout = QVBoxLayout(log_group)
-        log_layout.addWidget(self.log_output)
-
-        root_layout.addWidget(log_group)
-
-        self.setCentralWidget(root)
+        return tab
 
     def _path_row(self, line_edit: QLineEdit, callback) -> QWidget:
         container = QWidget()
@@ -217,8 +313,8 @@ class MainWindow(QMainWindow):
         return container
 
     def _connect_events(self) -> None:
-        self.validate_button.clicked.connect(lambda: self._start_worker("validate"))
-        self.generate_button.clicked.connect(lambda: self._start_worker("generate"))
+        self.validate_g1_button.clicked.connect(lambda: self._start_worker("validate"))
+        self.generate_g1_button.clicked.connect(lambda: self._start_worker("generate"))
         self.clear_log_button.clicked.connect(self.log_output.clear)
 
     def _select_raw_dir(self) -> None:
@@ -250,6 +346,7 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Proceso en ejecución", "Ya hay un proceso ejecutándose.")
             return
 
+        self.tabs.setCurrentWidget(self.tabs.widget(4))
         self._set_buttons_enabled(False)
         self._append_log("=" * 80)
         self._append_log("Iniciando proceso...")
@@ -291,8 +388,8 @@ class MainWindow(QMainWindow):
         self._set_buttons_enabled(True)
 
     def _set_buttons_enabled(self, enabled: bool) -> None:
-        self.validate_button.setEnabled(enabled)
-        self.generate_button.setEnabled(enabled)
+        self.validate_g1_button.setEnabled(enabled)
+        self.generate_g1_button.setEnabled(enabled)
         self.clear_log_button.setEnabled(enabled)
 
     def _append_log(self, message: str) -> None:
