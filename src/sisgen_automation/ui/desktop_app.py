@@ -25,6 +25,9 @@ from PySide6.QtWidgets import (
 from sisgen_automation.g1.sources import validate_g1_sources
 from sisgen_automation.g1.txt import create_g1_txt
 
+from sisgen_automation.cenhid.template import create_cenhid_template
+from sisgen_automation.center.template import create_center_template
+from sisgen_automation.dacoce.template import create_dacoce_template
 
 class G1Worker(QObject):
     finished = Signal(str)
@@ -129,13 +132,85 @@ class G1Worker(QObject):
         if not path.exists():
             raise FileNotFoundError(f"No existe el archivo requerido: {path}")
 
+class TemplateWorker(QObject):
+    finished = Signal(str)
+    failed = Signal(str)
+    log = Signal(str)
+
+    def __init__(
+        self,
+        *,
+        period: str,
+        raw_dir: Path,
+        output_dir: Path,
+        cenhid_catalog: Path,
+        center_catalog: Path,
+    ) -> None:
+        super().__init__()
+        self.period = period
+        self.raw_dir = raw_dir
+        self.output_dir = output_dir
+        self.cenhid_catalog = cenhid_catalog
+        self.center_catalog = center_catalog
+
+    def run(self) -> None:
+        try:
+            self._ensure_file(self.cenhid_catalog)
+            self._ensure_file(self.center_catalog)
+
+            dacoce_path = self.raw_dir / "DACOCE.DBF"
+            self._ensure_file(dacoce_path)
+
+            templates_dir = self.output_dir / "templates"
+            templates_dir.mkdir(parents=True, exist_ok=True)
+
+            period_label = self.period.replace("-", "_")
+
+            self.log.emit(f"Periodo: {self.period}")
+            self.log.emit(f"Carpeta de plantillas: {templates_dir}")
+
+            self.log.emit("Generando plantilla CENHID...")
+            cenhid_output = create_cenhid_template(
+                period=self.period,
+                catalog_path=self.cenhid_catalog,
+                output_path=templates_dir / f"CENHID_{period_label}_template.xlsx",
+            )
+            self.log.emit(f"CENHID: {cenhid_output}")
+
+            self.log.emit("Generando plantilla CENTER...")
+            center_output = create_center_template(
+                period=self.period,
+                catalog_path=self.center_catalog,
+                output_path=templates_dir / f"CENTER_{period_label}_template.xlsx",
+            )
+            self.log.emit(f"CENTER: {center_output}")
+
+            self.log.emit("Generando plantilla DACOCE desde catálogos locales...")
+            dacoce_output = create_dacoce_template(
+                period=self.period,
+                source_dbf_path=dacoce_path,
+                output_path=templates_dir / f"DACOCE_{period_label}_template.xlsx",
+                cenhid_catalog_path=self.cenhid_catalog,
+                center_catalog_path=self.center_catalog,
+            )
+            self.log.emit(f"DACOCE: {dacoce_output.output_path}")
+
+            self.finished.emit(f"Plantillas generadas correctamente en: {templates_dir}")
+        except Exception as error:  # noqa: BLE001
+            details = traceback.format_exc()
+            self.failed.emit(f"{error}\n\nDetalle técnico:\n{details}")
+
+    @staticmethod
+    def _ensure_file(path: Path) -> None:
+        if not path.exists():
+            raise FileNotFoundError(f"No existe el archivo requerido: {path}")
 
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
 
         self.worker_thread: QThread | None = None
-        self.worker: G1Worker | None = None
+        self.worker: G1Worker | TemplateWorker | None = None
 
         self.setWindowTitle("SISGEN Format Automation")
         self.resize(1100, 760)
@@ -148,6 +223,7 @@ class MainWindow(QMainWindow):
 
         self.validate_g1_button = QPushButton("Validar fuentes G1")
         self.generate_g1_button = QPushButton("Generar TXT G1")
+        self.generate_templates_button = QPushButton("Generar plantillas mensuales")
         self.clear_log_button = QPushButton("Limpiar logs")
 
         self.log_output = QTextEdit()
@@ -222,13 +298,27 @@ class MainWindow(QMainWindow):
         title.setStyleSheet("font-size: 18px; font-weight: bold;")
 
         message = QLabel(
-            "Pendiente para el siguiente bloque: aquí se generarán las plantillas Excel "
-            "de CENHID, CENTER y DACOCE usando el periodo y catálogos configurados."
+            "Genera las plantillas Excel de CENHID, CENTER y DACOCE usando el periodo "
+            "y los catálogos configurados. Las plantillas se guardan en la carpeta de salida."
         )
         message.setWordWrap(True)
 
+        actions_group = QGroupBox("Acciones")
+        actions_layout = QHBoxLayout(actions_group)
+        actions_layout.addWidget(self.generate_templates_button)
+        actions_layout.addStretch()
+
+        note = QLabel(
+            "DACOCE se genera desde los catálogos CENHID y CENTER para evitar copiar "
+            "centrales incorrectas desde históricos antiguos."
+        )
+        note.setWordWrap(True)
+        note.setStyleSheet("color: #555;")
+
         layout.addWidget(title)
         layout.addWidget(message)
+        layout.addWidget(actions_group)
+        layout.addWidget(note)
         layout.addStretch()
 
         return tab
@@ -315,6 +405,7 @@ class MainWindow(QMainWindow):
     def _connect_events(self) -> None:
         self.validate_g1_button.clicked.connect(lambda: self._start_worker("validate"))
         self.generate_g1_button.clicked.connect(lambda: self._start_worker("generate"))
+        self.generate_templates_button.clicked.connect(self._start_template_worker)
         self.clear_log_button.clicked.connect(self.log_output.clear)
 
     def _select_raw_dir(self) -> None:
@@ -340,6 +431,37 @@ class MainWindow(QMainWindow):
 
         if selected:
             target.setText(selected)
+
+    def _start_template_worker(self) -> None:
+        if self.worker_thread is not None:
+            QMessageBox.warning(self, "Proceso en ejecución", "Ya hay un proceso ejecutándose.")
+            return
+
+        self.tabs.setCurrentWidget(self.tabs.widget(4))
+        self._set_buttons_enabled(False)
+        self._append_log("=" * 80)
+        self._append_log("Iniciando generación de plantillas...")
+
+        self.worker_thread = QThread()
+        self.worker = TemplateWorker(
+            period=self.period_input.text().strip(),
+            raw_dir=Path(self.raw_dir_input.text().strip()),
+            output_dir=Path(self.output_dir_input.text().strip()),
+            cenhid_catalog=Path(self.cenhid_catalog_input.text().strip()),
+            center_catalog=Path(self.center_catalog_input.text().strip()),
+        )
+
+        self.worker.moveToThread(self.worker_thread)
+
+        self.worker_thread.started.connect(self.worker.run)
+        self.worker.log.connect(self._append_log)
+        self.worker.finished.connect(self._handle_success)
+        self.worker.failed.connect(self._handle_failure)
+        self.worker.finished.connect(self.worker_thread.quit)
+        self.worker.failed.connect(self.worker_thread.quit)
+        self.worker_thread.finished.connect(self._cleanup_worker)
+
+        self.worker_thread.start()
 
     def _start_worker(self, action: str) -> None:
         if self.worker_thread is not None:
@@ -388,6 +510,7 @@ class MainWindow(QMainWindow):
         self._set_buttons_enabled(True)
 
     def _set_buttons_enabled(self, enabled: bool) -> None:
+        self.generate_templates_button.setEnabled(enabled)
         self.validate_g1_button.setEnabled(enabled)
         self.generate_g1_button.setEnabled(enabled)
         self.clear_log_button.setEnabled(enabled)
