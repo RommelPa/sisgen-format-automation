@@ -523,18 +523,39 @@ def _build_blocks(
             key=lambda item: _group_order(item.group_name),
         )
         dacoce = dacoce_rows.get((ccodcon, center_type))
+        gross_energy = sum((item.gross_energy for item in central_groups), Decimal("0"))
 
         if dacoce is None:
-            _add_issue(
-                issues,
-                "ERROR",
-                section,
-                "DACOCE",
-                "CCODCON/CTIPCEN",
-                "Central presente en generación pero ausente en DACOCE.",
-                f"{ccodcon} / {center_type}",
-            )
-            continue
+            if gross_energy == Decimal("0"):
+                _add_issue(
+                    issues,
+                    "WARNING",
+                    section,
+                    "DACOCE",
+                    "CCODCON/CTIPCEN",
+                    "Central presente en generación con producción bruta cero y ausente en DACOCE. "
+                    "Para G1 se usarán valores cero en consumo propio, producción neta y máxima demanda.",
+                    f"{ccodcon} / {center_type}",
+                )
+
+                dacoce = G1DacoceRow(
+                    ccodcon=ccodcon,
+                    center_type=center_type,  # type: ignore[arg-type]
+                    own_consumption=Decimal("0"),
+                    net_production=Decimal("0"),
+                    max_demand=Decimal("0"),
+                )
+            else:
+                _add_issue(
+                    issues,
+                    "ERROR",
+                    section,
+                    "DACOCE",
+                    "CCODCON/CTIPCEN",
+                    "Central presente en generación pero ausente en DACOCE.",
+                    f"{ccodcon} / {center_type}",
+                )
+                continue
 
         blocks.append(
             G1CentralBlock(
