@@ -70,6 +70,8 @@ from sisgen_automation.g1.sources import (
     write_g1_sources_validation_markdown,
 )
 
+from sisgen_automation.g1.txt import G1TxtResult, create_g1_txt
+
 app = typer.Typer(
     help="Herramientas para automatizar formatos SISGEN.",
     no_args_is_help=True,
@@ -1123,6 +1125,87 @@ def validate_g1_sources_command(
 
     if fail_on_errors and result.has_errors:
         raise typer.Exit(code=1)
+    
+def _render_g1_txt_summary(result: G1TxtResult) -> None:
+    console.print("")
+    console.print(f"[bold green]TXT G1 generado:[/bold green] {result.output_path}")
+    console.print("")
+
+    table = Table(title=f"Resumen TXT G1 {result.period}")
+    table.add_column("Métrica")
+    table.add_column("Valor", justify="right")
+
+    table.add_row("Centrales hidro", str(result.hydro_central_count))
+    table.add_row("Grupos hidro", str(result.hydro_group_count))
+    table.add_row("Centrales termo", str(result.thermal_central_count))
+    table.add_row("Grupos termo", str(result.thermal_group_count))
+    table.add_row("Advertencias de fuentes", str(result.warnings_count))
+
+    console.print(table)
+
+    if result.warnings_count:
+        console.print(
+            "[bold yellow]El TXT fue generado con advertencias de fuente. "
+            "Revisar validate-g1-sources.[/bold yellow]"
+        )
+
+
+@app.command("create-g1-txt")
+def create_g1_txt_command(
+    cenhid: Path = typer.Option(
+        ...,
+        "--cenhid",
+        help="Ruta del archivo CENHID.DBF.",
+    ),
+    center: Path = typer.Option(
+        ...,
+        "--center",
+        help="Ruta del archivo CENTER.DBF.",
+    ),
+    dacoce: Path = typer.Option(
+        ...,
+        "--dacoce",
+        help="Ruta del archivo DACOCE.DBF.",
+    ),
+    period: str = typer.Option(
+        ...,
+        "--period",
+        "-p",
+        help="Periodo a generar en formato YYYY-MM. Ejemplo: 2026-01.",
+    ),
+    cenhid_catalog: Path = typer.Option(
+        ...,
+        "--cenhid-catalog",
+        help="Ruta del catálogo local CENHID en YAML.",
+    ),
+    center_catalog: Path = typer.Option(
+        ...,
+        "--center-catalog",
+        help="Ruta del catálogo local CENTER en YAML.",
+    ),
+    output: Optional[Path] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Ruta del TXT generado.",
+    ),
+) -> None:
+    """Genera el Formato G1 completo en TXT."""
+    try:
+        result = create_g1_txt(
+            cenhid_path=cenhid,
+            center_path=center,
+            dacoce_path=dacoce,
+            period=period,
+            cenhid_catalog_path=cenhid_catalog,
+            center_catalog_path=center_catalog,
+            output_path=output,
+        )
+    except ValueError as error:
+        console.print(f"[bold red]Error:[/bold red] {error}")
+        raise typer.Exit(code=1) from error
+
+    _render_g1_txt_summary(result)
     
 if __name__ == "__main__":
     app()
