@@ -54,6 +54,8 @@ from sisgen_automation.center.validate import (
     write_center_validation_markdown,
 )
 
+from sisgen_automation.center.template import create_center_template
+
 app = typer.Typer(
     help="Herramientas para automatizar formatos SISGEN.",
     no_args_is_help=True,
@@ -829,6 +831,47 @@ def validate_center(
 
     if fail_on_errors and result.has_errors:
         raise typer.Exit(code=1)
+    
+@app.command("create-center-template")
+def create_center_template_command(
+    period: str = typer.Option(
+        ...,
+        "--period",
+        "-p",
+        help="Periodo de la plantilla en formato YYYY-MM. Ejemplo: 2026-01.",
+    ),
+    catalog: Path = typer.Option(
+        ...,
+        "--catalog",
+        "-c",
+        help="Ruta del catálogo local CENTER en YAML.",
+    ),
+    output: Optional[Path] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Ruta del Excel generado.",
+    ),
+) -> None:
+    """Genera una plantilla Excel mensual para CENTER."""
+    try:
+        output_path = create_center_template(
+            period=period,
+            catalog_path=catalog,
+            output_path=output,
+        )
+    except ValueError as error:
+        console.print(f"[bold red]Error:[/bold red] {error}")
+        raise typer.Exit(code=1) from error
+
+    console.print("")
+    console.print(f"[bold green]Plantilla CENTER generada:[/bold green] {output_path}")
+    console.print("")
+    console.print(
+        "[bold]Columnas editables:[/bold] CESTGRU, NHORPUN, NFUHOPU, "
+        "CHRSMAN, CHRSOPE, CHRSSAL, NCONLUB"
+    )
+    console.print("[bold]Columna calculada:[/bold] NTOPRBR = NHORPUN + NFUHOPU")
     
 if __name__ == "__main__":
     app()
