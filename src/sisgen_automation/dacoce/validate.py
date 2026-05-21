@@ -22,7 +22,9 @@ EXPECTED_FIELDS = [
     DbfField("NMAXDEM", "N", 19, 5),
 ]
 
-NUMERIC_FIELDS = ["NCONPRO", "NPRONET", "NMAXDEM"]
+REQUIRED_NON_NEGATIVE_FIELDS = ["NCONPRO", "NMAXDEM"]
+OPTIONAL_SIGNED_FIELDS = ["NPRONET"]
+NUMERIC_FIELDS = REQUIRED_NON_NEGATIVE_FIELDS + OPTIONAL_SIGNED_FIELDS
 CENTER_TYPES = {"H", "T"}
 MONTHS = {f"{month:02d}" for month in range(1, 13)}
 
@@ -153,7 +155,7 @@ def _validate_numeric_fields(
     row_number: int,
     issues: list[DacoceValidationIssue],
 ) -> None:
-    for field in NUMERIC_FIELDS:
+    for field in REQUIRED_NON_NEGATIVE_FIELDS:
         value = record.get(field)
         decimal_value = _to_decimal(value)
 
@@ -163,7 +165,7 @@ def _validate_numeric_fields(
                 "ERROR",
                 row_number,
                 field,
-                "Valor numérico inválido o vacío.",
+                "Valor numérico obligatorio inválido o vacío.",
                 value,
             )
             continue
@@ -178,6 +180,19 @@ def _validate_numeric_fields(
                 decimal_value,
             )
 
+    for field in OPTIONAL_SIGNED_FIELDS:
+        value = record.get(field)
+        decimal_value = _to_decimal(value)
+
+        if decimal_value is None:
+            _add_issue(
+                issues,
+                "WARNING",
+                row_number,
+                field,
+                "Valor numérico vacío. Se revisará al generar reportes.",
+                value,
+            )
 
 def _validate_record(
     record: Mapping[str, object],
