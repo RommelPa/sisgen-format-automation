@@ -46,6 +46,8 @@ from sisgen_automation.dacoce.template_validation import (
     write_dacoce_template_validation_markdown,
 )
 
+from sisgen_automation.dacoce.export_dbf import DacoceExportResult, export_dacoce_dbf
+
 app = typer.Typer(
     help="Herramientas para automatizar formatos SISGEN.",
     no_args_is_help=True,
@@ -693,6 +695,60 @@ def validate_dacoce_template_command(
 
     if fail_on_errors and result.has_errors:
         raise typer.Exit(code=1)
+    
+def _render_dacoce_export_summary(result: DacoceExportResult) -> None:
+    console.print("")
+    console.print(f"[bold green]DBF DACOCE exportado correctamente:[/bold green] {result.output_path}")
+    console.print("")
+
+    table = Table(title="Resumen de exportación DACOCE")
+    table.add_column("Métrica")
+    table.add_column("Valor", justify="right")
+
+    table.add_row("Periodo agregado", result.period)
+    table.add_row("Registros originales", str(result.original_record_count))
+    table.add_row("Registros agregados", str(result.appended_record_count))
+    table.add_row("Registros finales", str(result.final_record_count))
+
+    console.print(table)
+
+
+@app.command("export-dacoce-dbf")
+def export_dacoce_dbf_command(
+    source_dbf_path: Path = typer.Argument(..., help="Ruta del DACOCE.DBF histórico fuente."),
+    template_path: Path = typer.Argument(..., help="Ruta de la plantilla DACOCE validada."),
+    period: str = typer.Option(
+        ...,
+        "--period",
+        "-p",
+        help="Periodo a agregar en formato YYYY-MM. Ejemplo: 2026-01.",
+    ),
+    output: Optional[Path] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Ruta del DBF generado.",
+    ),
+    allow_existing_period: bool = typer.Option(
+        False,
+        "--allow-existing-period",
+        help="Permite exportar aunque el periodo ya exista en el DBF fuente.",
+    ),
+) -> None:
+    """Genera un nuevo DACOCE.DBF agregando el periodo mensual validado."""
+    try:
+        result = export_dacoce_dbf(
+            source_dbf_path=source_dbf_path,
+            template_path=template_path,
+            period=period,
+            output_path=output,
+            allow_existing_period=allow_existing_period,
+        )
+    except ValueError as error:
+        console.print(f"[bold red]Error:[/bold red] {error}")
+        raise typer.Exit(code=1) from error
+
+    _render_dacoce_export_summary(result)
     
 if __name__ == "__main__":
     app()
