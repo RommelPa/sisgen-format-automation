@@ -14,6 +14,7 @@ from sisgen_automation.cenhid.validate import (
     validate_cenhid_dbf,
     write_validation_markdown,
 )
+from sisgen_automation.cenhid.template import create_cenhid_template
 
 app = typer.Typer(
     help="Herramientas para automatizar formatos SISGEN.",
@@ -150,5 +151,43 @@ def validate_cenhid(
     if fail_on_errors and result.has_errors:
         raise typer.Exit(code=1)
 
+@app.command("create-cenhid-template")
+def create_cenhid_template_command(
+    period: str = typer.Option(
+        ...,
+        "--period",
+        "-p",
+        help="Periodo de la plantilla en formato YYYY-MM. Ejemplo: 2026-01.",
+    ),
+    catalog: Path = typer.Option(
+        ...,
+        "--catalog",
+        "-c",
+        help="Ruta del catálogo local CENHID en YAML.",
+    ),
+    output: Optional[Path] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Ruta del Excel generado.",
+    ),
+) -> None:
+    """Genera una plantilla Excel mensual para CENHID."""
+    try:
+        output_path = create_cenhid_template(
+            period=period,
+            catalog_path=catalog,
+            output_path=output,
+        )
+    except ValueError as error:
+        console.print(f"[bold red]Error:[/bold red] {error}")
+        raise typer.Exit(code=1) from error
+
+    console.print("")
+    console.print(f"[bold green]Plantilla CENHID generada:[/bold green] {output_path}")
+    console.print("")
+    console.print("[bold]Columnas editables:[/bold] CESTGRU, NHORPUN, NFUHOPU, CHRSMAN, CHRSOPE, CHRSSAL")
+    console.print("[bold]Columna calculada:[/bold] NTOPRBR = NHORPUN + NFUHOPU")
+    
 if __name__ == "__main__":
     app()
