@@ -30,14 +30,6 @@ from sisgen_automation.dacoce.validate import (
     write_dacoce_validation_markdown,
 )
 
-from sisgen_automation.g1.hydro_sources import (
-    G1HydroSourcesValidationResult,
-    validate_g1_hydro_sources,
-    write_g1_hydro_sources_validation_markdown,
-)
-
-from sisgen_automation.g1.hydro_txt import G1HydroTxtResult, create_g1_hydro_txt
-
 from sisgen_automation.dacoce.template import DacoceTemplateResult, create_dacoce_template
 
 from sisgen_automation.dacoce.template_validation import (
@@ -439,160 +431,6 @@ def validate_dacoce(
 
     if fail_on_errors and result.has_errors:
         raise typer.Exit(code=1)
-    
-def _render_g1_hydro_sources_summary(
-    result: G1HydroSourcesValidationResult,
-    output_path: Path,
-) -> None:
-    console.print("")
-    console.print(f"[bold green]Validación de fuentes G1 hidro generada:[/bold green] {output_path}")
-    console.print("")
-
-    table = Table(title=f"Resumen G1 hidro {result.period}")
-    table.add_column("Métrica")
-    table.add_column("Valor", justify="right")
-
-    table.add_row("Filas CENHID", str(result.cenhid_group_rows))
-    table.add_row("Filas DACOCE hidro", str(result.dacoce_hydro_rows))
-    table.add_row("Centrales hidro", str(result.central_count))
-    table.add_row("Errores", str(len(result.errors)))
-    table.add_row("Advertencias", str(len(result.warnings)))
-
-    console.print(table)
-
-    if result.has_errors:
-        console.print("[bold red]Las fuentes no están listas para generar G1 hidro.[/bold red]")
-    elif result.warnings:
-        console.print("[bold yellow]Las fuentes tienen advertencias. Revisar antes de generar G1 hidro.[/bold yellow]")
-    else:
-        console.print("[bold green]Las fuentes están listas para generar G1 hidro.[/bold green]")
-
-
-@app.command("validate-g1-hydro-sources")
-def validate_g1_hydro_sources_command(
-    cenhid: Path = typer.Option(
-        ...,
-        "--cenhid",
-        help="Ruta del archivo CENHID.DBF.",
-    ),
-    dacoce: Path = typer.Option(
-        ...,
-        "--dacoce",
-        help="Ruta del archivo DACOCE.DBF.",
-    ),
-    period: str = typer.Option(
-        ...,
-        "--period",
-        "-p",
-        help="Periodo a validar en formato YYYY-MM. Ejemplo: 2025-12.",
-    ),
-    catalog: Path = typer.Option(
-        ...,
-        "--catalog",
-        "-c",
-        help="Ruta del catálogo local CENHID en YAML.",
-    ),
-    output: Optional[Path] = typer.Option(
-        None,
-        "--output",
-        "-o",
-        help="Ruta del reporte Markdown generado.",
-    ),
-    fail_on_errors: bool = typer.Option(
-        False,
-        "--fail-on-errors",
-        help="Termina con código de error si se encuentran errores.",
-    ),
-) -> None:
-    """Valida CENHID + DACOCE como fuentes de la sección hidroeléctrica del G1."""
-    try:
-        result = validate_g1_hydro_sources(
-            cenhid_path=cenhid,
-            dacoce_path=dacoce,
-            period=period,
-            catalog_path=catalog,
-        )
-    except ValueError as error:
-        console.print(f"[bold red]Error:[/bold red] {error}")
-        raise typer.Exit(code=1) from error
-
-    output_path = output
-    if output_path is None:
-        output_path = Path("reports") / f"G1_HYDRO_{period.replace('-', '_')}_sources_validation.md"
-
-    write_g1_hydro_sources_validation_markdown(result, output_path)
-    _render_g1_hydro_sources_summary(result, output_path)
-
-    if fail_on_errors and result.has_errors:
-        raise typer.Exit(code=1)
-    
-def _render_g1_hydro_txt_summary(result: G1HydroTxtResult) -> None:
-    console.print("")
-    console.print(f"[bold green]TXT G1 hidro generado:[/bold green] {result.output_path}")
-    console.print("")
-
-    table = Table(title=f"Resumen TXT G1 hidro {result.period}")
-    table.add_column("Métrica")
-    table.add_column("Valor", justify="right")
-
-    table.add_row("Centrales", str(result.central_count))
-    table.add_row("Grupos", str(result.group_count))
-    table.add_row("Advertencias de fuentes", str(result.warnings_count))
-
-    console.print(table)
-
-    if result.warnings_count:
-        console.print(
-            "[bold yellow]El TXT fue generado con advertencias de fuente. "
-            "Revisar el reporte validate-g1-hydro-sources.[/bold yellow]"
-        )
-
-
-@app.command("create-g1-hydro-txt")
-def create_g1_hydro_txt_command(
-    cenhid: Path = typer.Option(
-        ...,
-        "--cenhid",
-        help="Ruta del archivo CENHID.DBF.",
-    ),
-    dacoce: Path = typer.Option(
-        ...,
-        "--dacoce",
-        help="Ruta del archivo DACOCE.DBF.",
-    ),
-    period: str = typer.Option(
-        ...,
-        "--period",
-        "-p",
-        help="Periodo a generar en formato YYYY-MM. Ejemplo: 2025-12.",
-    ),
-    catalog: Path = typer.Option(
-        ...,
-        "--catalog",
-        "-c",
-        help="Ruta del catálogo local CENHID en YAML.",
-    ),
-    output: Optional[Path] = typer.Option(
-        None,
-        "--output",
-        "-o",
-        help="Ruta del TXT generado.",
-    ),
-) -> None:
-    """Genera la sección hidroeléctrica del Formato G1 en TXT."""
-    try:
-        result = create_g1_hydro_txt(
-            cenhid_path=cenhid,
-            dacoce_path=dacoce,
-            period=period,
-            catalog_path=catalog,
-            output_path=output,
-        )
-    except ValueError as error:
-        console.print(f"[bold red]Error:[/bold red] {error}")
-        raise typer.Exit(code=1) from error
-
-    _render_g1_hydro_txt_summary(result)
 
 def _render_dacoce_template_summary(result: DacoceTemplateResult) -> None:
     console.print("")
@@ -1206,6 +1044,6 @@ def create_g1_txt_command(
         raise typer.Exit(code=1) from error
 
     _render_g1_txt_summary(result)
-    
+
 if __name__ == "__main__":
     app()
