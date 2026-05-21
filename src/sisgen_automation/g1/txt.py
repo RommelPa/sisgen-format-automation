@@ -186,9 +186,9 @@ def _company_period_box(year: str, month: str) -> list[str]:
 
     return [
         "┌" + "─" * company_width + "┐",
-        "│" + _fit(company_text, company_width) + "│",
+        "│" + _fit(f" {company_text}", company_width) + "│",
         "├" + "─" * year_width + "┬" + "─" * month_width + "┬" + "─" * filler_width + "┘",
-        "│" + _fit(f"Año :{year}", year_width) + "│" + _fit(f" Mes : {month}", month_width) + "│",
+        "│" + _fit(f" Año :{year}", year_width) + "│" + _fit(f" Mes : {month}", month_width) + "│",
         "└" + "─" * year_width + "┴" + "─" * month_width + "┘",
         "",
     ]
@@ -208,7 +208,7 @@ def _thermal_header() -> list[str]:
                 ("Horas de", 1, "center"),
                 ("Horas", 1, "center"),
                 ("Horas de", 1, "center"),
-                ("Consumo de Combustible", 2, "center"),
+                ("Consumo de", 2, "center"),
                 ("Consumo de", 1, "center"),
             ],
             THERMAL_WIDTHS,
@@ -225,7 +225,7 @@ def _thermal_header() -> list[str]:
                 ("Mant.", 1, "center"),
                 ("de", 1, "center"),
                 ("Salidas", 1, "center"),
-                ("Tipo(4) Cantidad", 2, "center"),
+                ("Combustible", 2, "center"),
                 ("Lubricante", 1, "center"),
             ],
             THERMAL_WIDTHS,
