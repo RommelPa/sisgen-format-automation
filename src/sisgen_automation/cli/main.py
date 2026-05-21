@@ -56,6 +56,12 @@ from sisgen_automation.center.validate import (
 
 from sisgen_automation.center.template import create_center_template
 
+from sisgen_automation.center.template_validation import (
+    CenterTemplateValidationResult,
+    validate_center_template,
+    write_center_template_validation_markdown,
+)
+
 app = typer.Typer(
     help="Herramientas para automatizar formatos SISGEN.",
     no_args_is_help=True,
@@ -872,6 +878,82 @@ def create_center_template_command(
         "CHRSMAN, CHRSOPE, CHRSSAL, NCONLUB"
     )
     console.print("[bold]Columna calculada:[/bold] NTOPRBR = NHORPUN + NFUHOPU")
+
+def _render_center_template_validation_summary(
+    result: CenterTemplateValidationResult,
+    output_path: Path,
+) -> None:
+    console.print("")
+    console.print(f"[bold green]Validación de plantilla CENTER generada:[/bold green] {output_path}")
+    console.print("")
+
+    table = Table(title=f"Resumen validación plantilla CENTER {result.period}")
+    table.add_column("Métrica")
+    table.add_column("Valor", justify="right")
+
+    table.add_row("Filas leídas", str(result.rows_read))
+    table.add_row("Unidades esperadas", str(result.expected_units))
+    table.add_row("Unidades válidas", str(result.valid_units))
+    table.add_row("Errores", str(len(result.errors)))
+    table.add_row("Advertencias", str(len(result.warnings)))
+
+    console.print(table)
+
+    if result.has_errors:
+        console.print("[bold red]La plantilla CENTER no está lista para exportar.[/bold red]")
+    elif result.warnings:
+        console.print("[bold yellow]La plantilla CENTER tiene advertencias.[/bold yellow]")
+    else:
+        console.print("[bold green]La plantilla CENTER está lista para exportar.[/bold green]")
+
+
+@app.command("validate-center-template")
+def validate_center_template_command(
+    template_path: Path = typer.Argument(..., help="Ruta de la plantilla CENTER en Excel."),
+    period: str = typer.Option(
+        ...,
+        "--period",
+        "-p",
+        help="Periodo esperado en formato YYYY-MM. Ejemplo: 2026-01.",
+    ),
+    catalog: Path = typer.Option(
+        ...,
+        "--catalog",
+        "-c",
+        help="Ruta del catálogo local CENTER en YAML.",
+    ),
+    output: Optional[Path] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Ruta del reporte Markdown generado.",
+    ),
+    fail_on_errors: bool = typer.Option(
+        False,
+        "--fail-on-errors",
+        help="Termina con código de error si se encuentran errores.",
+    ),
+) -> None:
+    """Valida una plantilla mensual CENTER antes de generar DBF."""
+    try:
+        result = validate_center_template(
+            template_path=template_path,
+            period=period,
+            catalog_path=catalog,
+        )
+    except ValueError as error:
+        console.print(f"[bold red]Error:[/bold red] {error}")
+        raise typer.Exit(code=1) from error
+
+    output_path = output
+    if output_path is None:
+        output_path = Path("reports") / f"{template_path.stem}_validation.md"
+
+    write_center_template_validation_markdown(result, output_path)
+    _render_center_template_validation_summary(result, output_path)
+
+    if fail_on_errors and result.has_errors:
+        raise typer.Exit(code=1)
     
 if __name__ == "__main__":
     app()
