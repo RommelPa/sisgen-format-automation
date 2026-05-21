@@ -60,18 +60,25 @@ def _record_period(record: Mapping[str, object]) -> str | None:
     return f"20{year}-{month}"
 
 
-def _infer_latest_period(source_dbf_path: Path) -> str:
+def _infer_latest_period_before_target(source_dbf_path: Path, target_period: str) -> str:
+    parse_period(target_period)
+
     table = DBF(str(source_dbf_path), load=True, char_decode_errors="ignore")
     periods: set[str] = set()
 
     for record in table:
         period = _record_period(record)
 
-        if period is not None:
+        if period is None:
+            continue
+
+        if period < target_period:
             periods.add(period)
 
     if not periods:
-        raise ValueError("No se encontraron periodos válidos en DACOCE.")
+        raise ValueError(
+            "No se encontraron periodos válidos anteriores al periodo objetivo en DACOCE."
+        )
 
     return sorted(periods)[-1]
 
@@ -246,9 +253,17 @@ def create_dacoce_template(
     year, month = parse_period(period)
 
     if base_period is None:
-        base_period = _infer_latest_period(source_dbf_path)
+        base_period = _infer_latest_period_before_target(
+            source_dbf_path=source_dbf_path,
+            target_period=period,
+        )
     else:
         parse_period(base_period)
+
+        if base_period >= period:
+            raise ValueError(
+                "El periodo base debe ser anterior al periodo de la plantilla."
+            )
 
     base_rows = _read_base_rows(
         source_dbf_path=source_dbf_path,
