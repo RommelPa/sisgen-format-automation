@@ -257,6 +257,33 @@ def _group_order(group_name: str) -> tuple[int, str]:
 
     return 999, text
 
+ROMAN_ORDER = {
+    "I": 1,
+    "II": 2,
+    "III": 3,
+    "IV": 4,
+    "V": 5,
+    "VI": 6,
+    "VII": 7,
+    "VIII": 8,
+    "IX": 9,
+    "X": 10,
+}
+
+def _central_sort_key(central_name: str) -> tuple[str, int, str]:
+    normalized = (
+        central_name.upper()
+        .replace("C. H.", "")
+        .replace("C. T.", "")
+        .strip()
+    )
+
+    tokens = normalized.split()
+
+    if tokens and tokens[-1] in ROMAN_ORDER:
+        return (" ".join(tokens[:-1]), ROMAN_ORDER[tokens[-1]], normalized)
+
+    return (normalized, 0, normalized)
 
 def _status_to_g1(value: object) -> str:
     status = _clean_upper(value)
@@ -490,7 +517,7 @@ def _build_blocks(
 
     blocks: list[G1CentralBlock] = []
 
-    for ccodcon in sorted(rows_by_central):
+    for ccodcon in rows_by_central:
         central_groups = sorted(
             rows_by_central[ccodcon],
             key=lambda item: _group_order(item.group_name),
@@ -537,7 +564,7 @@ def _build_blocks(
                 ),
             )
 
-    return blocks
+    return sorted(blocks, key=lambda item: _central_sort_key(item.central_name))
 
 
 def _warn_extra_dacoce_rows(
