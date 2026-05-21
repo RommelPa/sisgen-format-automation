@@ -64,6 +64,8 @@ from sisgen_automation.g1.sources import (
 
 from sisgen_automation.g1.txt import G1TxtResult, create_g1_txt
 
+from sisgen_automation.ui.desktop_app import run_desktop_app
+
 app = typer.Typer(
     help="Herramientas para automatizar formatos SISGEN.",
     no_args_is_help=True,
@@ -1045,5 +1047,10 @@ def create_g1_txt_command(
 
     _render_g1_txt_summary(result)
 
+@app.command("desktop")
+def desktop_command() -> None:
+    """Abre la interfaz gráfica de escritorio."""
+    run_desktop_app()
+    
 if __name__ == "__main__":
     app()
