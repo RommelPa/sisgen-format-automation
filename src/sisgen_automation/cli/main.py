@@ -36,6 +36,8 @@ from sisgen_automation.g1.hydro_sources import (
     write_g1_hydro_sources_validation_markdown,
 )
 
+from sisgen_automation.g1.hydro_txt import G1HydroTxtResult, create_g1_hydro_txt
+
 app = typer.Typer(
     help="Herramientas para automatizar formatos SISGEN.",
     no_args_is_help=True,
@@ -489,6 +491,74 @@ def validate_g1_hydro_sources_command(
 
     if fail_on_errors and result.has_errors:
         raise typer.Exit(code=1)
+    
+def _render_g1_hydro_txt_summary(result: G1HydroTxtResult) -> None:
+    console.print("")
+    console.print(f"[bold green]TXT G1 hidro generado:[/bold green] {result.output_path}")
+    console.print("")
+
+    table = Table(title=f"Resumen TXT G1 hidro {result.period}")
+    table.add_column("Métrica")
+    table.add_column("Valor", justify="right")
+
+    table.add_row("Centrales", str(result.central_count))
+    table.add_row("Grupos", str(result.group_count))
+    table.add_row("Advertencias de fuentes", str(result.warnings_count))
+
+    console.print(table)
+
+    if result.warnings_count:
+        console.print(
+            "[bold yellow]El TXT fue generado con advertencias de fuente. "
+            "Revisar el reporte validate-g1-hydro-sources.[/bold yellow]"
+        )
+
+
+@app.command("create-g1-hydro-txt")
+def create_g1_hydro_txt_command(
+    cenhid: Path = typer.Option(
+        ...,
+        "--cenhid",
+        help="Ruta del archivo CENHID.DBF.",
+    ),
+    dacoce: Path = typer.Option(
+        ...,
+        "--dacoce",
+        help="Ruta del archivo DACOCE.DBF.",
+    ),
+    period: str = typer.Option(
+        ...,
+        "--period",
+        "-p",
+        help="Periodo a generar en formato YYYY-MM. Ejemplo: 2025-12.",
+    ),
+    catalog: Path = typer.Option(
+        ...,
+        "--catalog",
+        "-c",
+        help="Ruta del catálogo local CENHID en YAML.",
+    ),
+    output: Optional[Path] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Ruta del TXT generado.",
+    ),
+) -> None:
+    """Genera la sección hidroeléctrica del Formato G1 en TXT."""
+    try:
+        result = create_g1_hydro_txt(
+            cenhid_path=cenhid,
+            dacoce_path=dacoce,
+            period=period,
+            catalog_path=catalog,
+            output_path=output,
+        )
+    except ValueError as error:
+        console.print(f"[bold red]Error:[/bold red] {error}")
+        raise typer.Exit(code=1) from error
+
+    _render_g1_hydro_txt_summary(result)
     
 if __name__ == "__main__":
     app()
