@@ -1,0 +1,53 @@
+Metadata-Version: 2.4
+Name: sisgen-format-automation
+Version: 0.1.0
+Summary: Automatización de formatos SISGEN en DBF, Excel y reportes de auditoría.
+Author: Rommel Paredes Banda
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: dbfread>=2.0.7
+Requires-Dist: dbf>=0.99.9
+Requires-Dist: openpyxl>=3.1.5
+Requires-Dist: pydantic>=2.8.0
+Requires-Dist: pyyaml>=6.0.2
+Requires-Dist: typer>=0.12.5
+Requires-Dist: rich>=13.7.1
+Provides-Extra: dev
+Requires-Dist: pytest>=8.3.0; extra == "dev"
+Requires-Dist: ruff>=0.6.0; extra == "dev"
+Requires-Dist: mypy>=1.11.0; extra == "dev"
+
+# SISGEN Format Automation
+
+Automatización de formatos mensuales SISGEN para generación de archivos DBF y reportes de auditoría.
+
+## Objetivo
+
+Reducir el trabajo manual asociado a la actualización mensual de formatos SISGEN, manteniendo compatibilidad con archivos DBF históricos y generando reportes de revisión.
+
+## Alcance inicial
+
+La primera versión trabaja con el formato:
+
+- `CENHID`: Generación mensual de centrales hidráulicas.
+
+## Principios del proyecto
+
+- No modificar archivos DBF originales directamente.
+- Generar siempre una salida nueva.
+- Validar estructura antes de exportar.
+- No subir datos reales a GitHub.
+- Usar datos demo para documentación pública.
+
+## Flujo esperado
+
+1. Leer DBF histórico.
+2. Identificar estructura.
+3. Crear plantilla mensual.
+4. Validar datos nuevos.
+5. Generar DBF actualizado.
+6. Emitir reportes de auditoría.
+
+## Estado
+
+Proyecto en configuración inicial.

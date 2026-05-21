@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Datos reales
+data/raw/*
+data/processed/*
+data/output/*
+reports/*
+
+# Mantener carpetas
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/output/.gitkeep
+!reports/.gitkeep
+
+# Archivos sensibles / reales
+*.DBF
+*.dbf
+*.NTX
+*.ntx
+*.xlsx
+*.xls
+*.pdf
+*.docx
+*.txt
+
+# Excepciones para demos documentados
+!data/demo/.gitkeep
+!data/demo/*.csv
+!data/demo/*.json
+!data/demo/*.md
+
+# Sistema
+.DS_Store
+Thumbs.db
+desktop.ini
