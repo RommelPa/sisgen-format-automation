@@ -211,23 +211,35 @@ def _add_issue(
         )
     )
 
+def _title_preserve_roman(text: str) -> str:
+    roman_tokens = {"I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"}
+
+    parts = []
+    for token in text.strip().split():
+        upper_token = token.upper()
+        if upper_token in roman_tokens:
+            parts.append(upper_token)
+        else:
+            parts.append(token.title())
+
+    return " ".join(parts)
 
 def _display_hydro_name(raw_name: str) -> str:
-    normalized = raw_name.strip()
+    normalized = _title_preserve_roman(raw_name)
 
     if normalized.upper().startswith("CHARCANI"):
-        return f"C. H. {normalized.title()}"
+        return f"C. H. {normalized}"
 
-    return normalized.title()
+    return normalized
 
 
 def _display_thermal_name(raw_name: str) -> str:
-    normalized = raw_name.strip()
+    normalized = _title_preserve_roman(raw_name)
 
     if normalized.upper().startswith("C. T."):
         return normalized
 
-    return f"C. T. {normalized.title()}"
+    return f"C. T. {normalized}"
 
 
 def _group_order(group_name: str) -> tuple[int, str]:
