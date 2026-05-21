@@ -26,6 +26,15 @@ MONTH_NAMES = {
     "12": "Diciembre",
 }
 
+def _default_report_date(period: str) -> date:
+    year_text, month_text = period.split("-")
+    year = int(year_text)
+    month = int(month_text)
+
+    if month == 12:
+        return date(year + 1, 1, 20)
+
+    return date(year, month + 1, 20)
 
 @dataclass(frozen=True)
 class HydroGroupReportRow:
@@ -444,7 +453,7 @@ def create_g1_hydro_txt(
         output_path = Path("reports") / f"G1_HYDRO_{period.replace('-', '_')}.txt"
 
     if report_date is None:
-        report_date = date.today()
+        report_date = _default_report_date(period)
 
     cenhid_rows = _read_cenhid_group_rows(
         cenhid_path=cenhid_path,
