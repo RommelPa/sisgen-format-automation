@@ -213,6 +213,7 @@ class ExportDbfWorker(QObject):
     finished = Signal(str)
     failed = Signal(str)
     log = Signal(str)
+    exported_dir = Signal(str)
 
     def __init__(
         self,
@@ -299,6 +300,8 @@ class ExportDbfWorker(QObject):
                 f"DACOCE exportado: {dacoce_result.output_path} "
                 f"({dacoce_result.appended_record_count} registros nuevos)"
             )
+
+            self.exported_dir.emit(str(output_dbf_dir))
 
             self.finished.emit(f"DBF exportados correctamente en: {output_dbf_dir}")
         except Exception as error:  # noqa: BLE001
@@ -521,6 +524,11 @@ class MainWindow(QMainWindow):
         layout.addWidget(button)
 
         return container
+    
+    def _handle_exported_dbf_dir(self, path: str) -> None:
+        self.raw_dir_input.setText(path)
+        self._append_log(f"Carpeta DBF actualizada automáticamente: {path}")
+        self._append_log("Ahora puedes generar G1 usando los DBF exportados.")
 
     def _connect_events(self) -> None:
         self.validate_g1_button.clicked.connect(lambda: self._start_worker("validate"))
@@ -607,6 +615,7 @@ class MainWindow(QMainWindow):
 
         self.worker_thread.started.connect(self.worker.run)
         self.worker.log.connect(self._append_log)
+        self.worker.exported_dir.connect(self._handle_exported_dbf_dir)
         self.worker.finished.connect(self._handle_success)
         self.worker.failed.connect(self._handle_failure)
         self.worker.finished.connect(self.worker_thread.quit)
