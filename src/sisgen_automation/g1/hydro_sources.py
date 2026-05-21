@@ -329,20 +329,21 @@ def _attach_dacoce_values(
         summary.net_production = net_production
         summary.max_demand = max_demand
 
-        expected_net = summary.gross_energy - own_consumption
-        difference = abs(expected_net - net_production)
+        calculated_net = summary.gross_energy - own_consumption
+        difference = abs(calculated_net - net_production)
 
         if difference > NET_PRODUCTION_TOLERANCE:
             _add_issue(
                 issues,
-                "ERROR",
+                "WARNING",
                 "G1",
                 "NPRONET",
-                "La producción neta DACOCE no cuadra con Producción Bruta CENHID - Consumo Propio DACOCE.",
+                "La producción neta DACOCE difiere de Producción Bruta CENHID - Consumo Propio DACOCE. "
+                "Para G1 se usará DACOCE.NPRONET como fuente oficial.",
                 (
-                    f"CCODCON={ccodcon}; bruto={summary.gross_energy}; "
-                    f"consumo={own_consumption}; neta={net_production}; "
-                    f"diferencia={difference}"
+                    f"CCODCON={ccodcon}; bruto_cenhid={summary.gross_energy}; "
+                    f"consumo_dacoce={own_consumption}; neta_dacoce={net_production}; "
+                    f"neta_calculada={calculated_net}; diferencia={difference}"
                 ),
             )
 
