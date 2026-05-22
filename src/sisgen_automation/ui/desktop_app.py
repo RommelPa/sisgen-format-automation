@@ -375,7 +375,7 @@ class MainWindow(QMainWindow):
         form = QFormLayout(config_group)
 
         form.addRow("Periodo YYYY-MM:", self.period_input)
-        form.addRow("Carpeta DBF históricos:", self._path_row(self.raw_dir_input, self._select_raw_dir))
+        form.addRow("Carpeta DBF base SISGEN:", self._path_row(self.raw_dir_input, self._select_raw_dir))
         form.addRow("Carpeta de salida:", self._path_row(self.output_dir_input, self._select_output_dir))
         form.addRow(
             "Catálogo CENHID:",
@@ -388,7 +388,7 @@ class MainWindow(QMainWindow):
 
         help_box = QLabel(
             "Esta configuración se usa en las pestañas de generación. "
-            "Los archivos esperados en la carpeta DBF son CENHID.DBF, CENTER.DBF y DACOCE.DBF."
+            "Los archivos esperados son CENHID.DBF, CENTER.DBF y DACOCE.DBF con estructura legacy del programa SISGEN."
         )
         help_box.setWordWrap(True)
         help_box.setStyleSheet("color: #555;")

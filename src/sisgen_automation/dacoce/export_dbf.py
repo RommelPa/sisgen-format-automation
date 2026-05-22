@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 from typing import Mapping
@@ -13,6 +12,7 @@ from sisgen_automation.cenhid.template import parse_period
 from sisgen_automation.dacoce.template import DACOCE_HEADERS
 from sisgen_automation.dacoce.template_validation import validate_dacoce_template
 from sisgen_automation.dbf.profile import DbfField, read_dbf_profile
+from sisgen_automation.dbf.compatibility import assert_sisgen_expected_layout
 
 DBF_ENCODING = "cp850"
 DBF_EOF_MARKER = b"\x1A"
@@ -162,13 +162,21 @@ def _write_appended_dbf(
                 f"{len(record)} != {profile.record_length}"
             )
 
-    today = date.today()
+    source_has_eof = (
+        len(source_bytes) > expected_data_end
+        and source_bytes[expected_data_end : expected_data_end + 1] == DBF_EOF_MARKER
+    )
+
     final_record_count = profile.record_count + len(serialized_records)
 
-    header[1] = today.year - 1900
-    header[2] = today.month
-    header[3] = today.day
     header[4:8] = final_record_count.to_bytes(4, byteorder="little")
+
+    output_bytes = bytes(header) + existing_records + b"".join(serialized_records)
+
+    if source_has_eof:
+        output_bytes += DBF_EOF_MARKER
+
+    output_path.write_bytes(output_bytes)
 
     output_path.write_bytes(
         bytes(header)
@@ -195,6 +203,7 @@ def export_dacoce_dbf(
     output_path: Path | None = None,
     allow_existing_period: bool = False,
 ) -> DacoceExportResult:
+    assert_sisgen_expected_layout(source_dbf_path, "DACOCE")
     validation_result = validate_dacoce_template(
         template_path=template_path,
         period=period,
