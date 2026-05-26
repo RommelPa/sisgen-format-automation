@@ -156,7 +156,12 @@ def validate_g2_sources(
     if not vepoen_path.exists():
         raise ValueError(f"No existe VEPOEN.DBF: {vepoen_path}")
 
-    table = DBF(str(vepoen_path), load=True, char_decode_errors="ignore")
+    table = DBF(
+        str(vepoen_path),
+        load=True,
+        encoding="cp850",
+        char_decode_errors="ignore",
+    )
 
     issues: list[G2SourceIssue] = []
     rows: list[G2SaleRow] = []
