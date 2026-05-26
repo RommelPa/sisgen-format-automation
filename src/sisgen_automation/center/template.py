@@ -203,8 +203,9 @@ def create_center_template(
     year, month = parse_period(period)
     catalog = load_center_catalog(catalog_path)
 
+    year_text, month_text = period.split("-", maxsplit=1)
     if output_path is None:
-        output_path = Path("templates") / f"CENTER_{period.replace('-', '_')}_template.xlsx"
+        output_path = Path("reports") / "templates" / f"CENTER_{year_text}_{month_text}_template.xlsx"
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
 

@@ -106,7 +106,7 @@ def load_center_units(catalog_path: Path) -> list[CenterUnit]:
 
 def default_comcen_template_path(period: str) -> Path:
     year_text, month_text = period.split("-", maxsplit=1)
-    return Path("templates") / f"COMCEN_{year_text}_{month_text}_template.xlsx"
+    return Path("reports") / "templates" / f"COMCEN_{year_text}_{month_text}_template.xlsx"
 
 
 def create_comcen_template(
