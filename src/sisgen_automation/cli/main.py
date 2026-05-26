@@ -65,6 +65,7 @@ from sisgen_automation.g1.sources import (
 )
 
 from sisgen_automation.g1.txt import G1TxtResult, create_g1_txt
+from sisgen_automation.comcen.export_dbf import ComcenExportResult, export_comcen_dbf
 
 app = typer.Typer(
     help="Herramientas para automatizar formatos SISGEN.",
@@ -973,6 +974,66 @@ def validate_comcen_template_command(
             raise typer.Exit(code=1)
     else:
         console.print("[bold green]La plantilla COMCEN está lista para exportar.[/bold green]")
+
+def _render_comcen_export_summary(result: ComcenExportResult) -> None:
+    console.print("")
+    console.print(f"[bold green]DBF COMCEN exportado correctamente:[/bold green] {result.output_path}")
+    console.print("")
+
+    table = Table(title="Resumen de exportación COMCEN")
+    table.add_column("Métrica")
+    table.add_column("Valor", justify="right")
+
+    table.add_row("Periodo agregado", result.period)
+    table.add_row("Registros originales", str(result.original_record_count))
+    table.add_row("Registros agregados", str(result.appended_record_count))
+    table.add_row("Registros finales", str(result.final_record_count))
+
+    console.print(table)
+    
+@app.command("export-comcen-dbf")
+def export_comcen_dbf_command(
+    source_dbf_path: Path = typer.Argument(..., help="Ruta del COMCEN.DBF fuente."),
+    template_path: Path = typer.Argument(..., help="Ruta de la plantilla COMCEN validada."),
+    period: str = typer.Option(
+        ...,
+        "--period",
+        "-p",
+        help="Periodo a agregar en formato YYYY-MM. Ejemplo: 2026-01.",
+    ),
+    catalog: Path = typer.Option(
+        ...,
+        "--catalog",
+        "-c",
+        help="Ruta del catálogo local CENTER en YAML.",
+    ),
+    output: Optional[Path] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Ruta del DBF generado.",
+    ),
+    allow_existing_period: bool = typer.Option(
+        False,
+        "--allow-existing-period",
+        help="Permite exportar aunque el periodo ya exista en el DBF fuente.",
+    ),
+) -> None:
+    """Genera un nuevo COMCEN.DBF agregando el periodo mensual validado."""
+    try:
+        result = export_comcen_dbf(
+            source_dbf_path=source_dbf_path,
+            template_path=template_path,
+            period=period,
+            catalog_path=catalog,
+            output_path=output,
+            allow_existing_period=allow_existing_period,
+        )
+    except ValueError as error:
+        console.print(f"[bold red]Error:[/bold red] {error}")
+        raise typer.Exit(code=1) from error
+
+    _render_comcen_export_summary(result)
 
 def _render_g1_sources_summary(
     result: G1SourcesValidationResult,

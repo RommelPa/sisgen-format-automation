@@ -28,6 +28,11 @@ EXPECTED_SISGEN_LAYOUTS = {
         header_length=289,
         record_length=77,
     ),
+    "COMCEN": DbfLayout(
+        format_name="COMCEN",
+        header_length=321,
+        record_length=91,
+    ),
 }
 
 
