@@ -55,6 +55,8 @@ from sisgen_automation.center.template_validation import (
 )
 
 from sisgen_automation.center.export_dbf import CenterExportResult, export_center_dbf
+from sisgen_automation.comcen.template import create_comcen_template
+from sisgen_automation.comcen.template_validation import validate_comcen_template
 
 from sisgen_automation.g1.sources import (
     G1SourcesValidationResult,
@@ -863,6 +865,114 @@ def export_center_dbf_command(
         raise typer.Exit(code=1) from error
 
     _render_center_export_summary(result)
+
+@app.command("create-comcen-template")
+def create_comcen_template_command(
+    period: str = typer.Option(
+        ...,
+        "--period",
+        "-p",
+        help="Periodo de la plantilla en formato YYYY-MM. Ejemplo: 2026-01.",
+    ),
+    catalog: Path = typer.Option(
+        ...,
+        "--catalog",
+        "-c",
+        help="Ruta del catálogo local CENTER en YAML.",
+    ),
+    output: Optional[Path] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Ruta del Excel generado.",
+    ),
+) -> None:
+    """Genera una plantilla Excel mensual para COMCEN."""
+    try:
+        result = create_comcen_template(
+            period=period,
+            catalog_path=catalog,
+            output_path=output,
+        )
+    except ValueError as error:
+        console.print(f"[bold red]Error:[/bold red] {error}")
+        raise typer.Exit(code=1) from error
+
+    console.print("")
+    console.print(f"[bold green]Plantilla COMCEN generada:[/bold green] {result.output_path}")
+    console.print("")
+
+    table = Table(title=f"Resumen plantilla COMCEN {result.period}")
+    table.add_column("Métrica")
+    table.add_column("Valor", justify="right")
+    table.add_row("Periodo", result.period)
+    table.add_row("Filas", str(result.rows))
+    console.print(table)
+
+    console.print("[bold]Columna editable:[/bold] NTOTCOM")
+
+
+@app.command("validate-comcen-template")
+def validate_comcen_template_command(
+    template_path: Path = typer.Argument(
+        ...,
+        help="Ruta de la plantilla COMCEN en Excel.",
+    ),
+    period: str = typer.Option(
+        ...,
+        "--period",
+        "-p",
+        help="Periodo esperado en formato YYYY-MM. Ejemplo: 2026-01.",
+    ),
+    catalog: Path = typer.Option(
+        ...,
+        "--catalog",
+        "-c",
+        help="Ruta del catálogo local CENTER en YAML.",
+    ),
+    fail_on_errors: bool = typer.Option(
+        False,
+        "--fail-on-errors",
+        help="Termina con código de error si se encuentran errores.",
+    ),
+) -> None:
+    """Valida una plantilla mensual COMCEN antes de generar DBF."""
+    try:
+        result = validate_comcen_template(
+            template_path=template_path,
+            period=period,
+            catalog_path=catalog,
+        )
+    except ValueError as error:
+        console.print(f"[bold red]Error:[/bold red] {error}")
+        raise typer.Exit(code=1) from error
+
+    console.print("")
+    console.print(f"[bold green]Validación COMCEN:[/bold green] {template_path}")
+    console.print("")
+
+    table = Table(title=f"Resumen validación plantilla COMCEN {period}")
+    table.add_column("Métrica")
+    table.add_column("Valor", justify="right")
+    table.add_row("Registros válidos", str(len(result.records)))
+    table.add_row("Errores", str(result.error_count))
+    table.add_row("Advertencias", str(result.warning_count))
+    console.print(table)
+
+    for issue in result.issues:
+        location = f"fila {issue.row}" if issue.row is not None else "general"
+        field = issue.field or "-"
+        console.print(
+            f"{issue.severity.value} | {location} | {field} | "
+            f"{issue.message} | {issue.value}"
+        )
+
+    if result.has_errors:
+        console.print("[bold red]La plantilla COMCEN no está lista para exportar.[/bold red]")
+        if fail_on_errors:
+            raise typer.Exit(code=1)
+    else:
+        console.print("[bold green]La plantilla COMCEN está lista para exportar.[/bold green]")
 
 def _render_g1_sources_summary(
     result: G1SourcesValidationResult,
