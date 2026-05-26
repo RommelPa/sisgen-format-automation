@@ -66,6 +66,7 @@ from sisgen_automation.g1.sources import (
 
 from sisgen_automation.g1.txt import G1TxtResult, create_g1_txt
 from sisgen_automation.comcen.export_dbf import ComcenExportResult, export_comcen_dbf
+from sisgen_automation.g2.sources import G2SourcesValidationResult, validate_g2_sources
 
 app = typer.Typer(
     help="Herramientas para automatizar formatos SISGEN.",
@@ -1228,6 +1229,75 @@ def create_g1_txt_command(
         raise typer.Exit(code=1) from error
 
     _render_g1_txt_summary(result)
+
+def _render_g2_sources_summary(result: G2SourcesValidationResult) -> None:
+    console.print("")
+    console.print(f"[bold green]Validación de fuentes G2 completada:[/bold green] {result.vepoen_path}")
+    console.print("")
+
+    table = Table(title=f"Resumen G2 {result.period}")
+    table.add_column("Métrica")
+    table.add_column("Valor", justify="right")
+
+    table.add_row("Registros VEPOEN", str(len(result.rows)))
+    table.add_row("Errores", str(len(result.errors)))
+    table.add_row("Advertencias", str(len(result.warnings)))
+
+    console.print(table)
+
+    for issue in result.issues[:30]:
+        console.print(
+            f"{issue.severity} | {issue.source} | {issue.field or ''} | "
+            f"{issue.message} | {issue.value or ''}"
+        )
+
+    if result.has_errors:
+        console.print("[bold red]Las fuentes G2 no están listas.[/bold red]")
+    elif result.warnings:
+        console.print("[bold yellow]Las fuentes G2 tienen advertencias.[/bold yellow]")
+    else:
+        console.print("[bold green]Las fuentes G2 están listas.[/bold green]")
+
+@app.command("validate-g2-sources")
+def validate_g2_sources_command(
+    vepoen: Path = typer.Option(
+        ...,
+        "--vepoen",
+        help="Ruta del archivo VEPOEN.DBF.",
+    ),
+    period: str = typer.Option(
+        ...,
+        "--period",
+        "-p",
+        help="Periodo a validar en formato YYYY-MM. Ejemplo: 2026-01.",
+    ),
+    catalog: Path = typer.Option(
+        ...,
+        "--catalog",
+        "-c",
+        help="Ruta del catálogo local G2 en YAML.",
+    ),
+    fail_on_errors: bool = typer.Option(
+        False,
+        "--fail-on-errors",
+        help="Termina con código de error si se encuentran errores.",
+    ),
+) -> None:
+    """Valida VEPOEN como fuente del Formato G2."""
+    try:
+        result = validate_g2_sources(
+            vepoen_path=vepoen,
+            catalog_path=catalog,
+            period=period,
+        )
+    except ValueError as error:
+        console.print(f"[bold red]Error:[/bold red] {error}")
+        raise typer.Exit(code=1) from error
+
+    _render_g2_sources_summary(result)
+
+    if fail_on_errors and result.has_errors:
+        raise typer.Exit(code=1)
 
 @app.command("desktop")
 def desktop_command() -> None:
