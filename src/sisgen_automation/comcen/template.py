@@ -127,46 +127,27 @@ def create_comcen_template(
     sheet = workbook.active
     sheet.title = "COMCEN"
 
-    title_fill = PatternFill("solid", fgColor="D9EAF7")
-    header_fill = PatternFill("solid", fgColor="D9D9D9")
-    locked_fill = PatternFill("solid", fgColor="E7E6E6")
-    editable_fill = PatternFill("solid", fgColor="FFFF00")
+    header_fill = PatternFill("solid", fgColor="7030A0")   # morado encabezado
+    locked_fill = PatternFill("solid", fgColor="DDEBF7")   # azul claro no editable
+    editable_fill = PatternFill("solid", fgColor="FFF2CC") # amarillo editable
     thin = Side(style="thin", color="000000")
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
 
-    sheet["A1"] = "COMCEN:"
-    sheet["B1"] = "Combustible Mensual Consumido Por Grupo"
-    sheet["A1"].font = Font(bold=True)
-    sheet["B1"].font = Font(bold=True)
-    sheet["A1"].fill = title_fill
-    sheet["B1"].fill = title_fill
+    header_row = 1
 
-    sheet["A3"] = "Campo"
-    sheet["B3"] = "Descripción"
-    sheet["A3"].font = Font(bold=True)
-    sheet["B3"].font = Font(bold=True)
-
-    sheet["A4"] = "CDESCOM"
-    sheet["B4"] = "Tipo de combustible"
-    sheet["A5"] = "NTOTCOM"
-    sheet["B5"] = "Total de combustible consumido"
-
-    for row in range(3, 6):
-        for col in range(1, 3):
-            cell = sheet.cell(row=row, column=col)
-            cell.border = border
-            if col == 1:
-                cell.fill = header_fill
-                cell.font = Font(bold=True)
-
-    header_row = 8
+    header_fill = PatternFill("solid", fgColor="7030A0")
+    locked_fill = PatternFill("solid", fgColor="DDEBF7")
+    editable_fill = PatternFill("solid", fgColor="FFF2CC")
+    thin = Side(style="thin", color="000000")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
 
     for col_index, header in enumerate(COMCEN_HEADERS, start=1):
         cell = sheet.cell(row=header_row, column=col_index, value=header)
-        cell.font = Font(bold=True)
+        cell.font = Font(bold=True, color="FFFFFF")
         cell.fill = header_fill
         cell.border = border
-        cell.alignment = Alignment(horizontal="center")
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.protection = Protection(locked=True)
 
     for row_index, unit in enumerate(units, start=header_row + 1):
         values: dict[str, Any] = {
@@ -216,7 +197,8 @@ def create_comcen_template(
             vertical="center",
         )
 
-    sheet.freeze_panes = "A9"
+    sheet.freeze_panes = "A2"
+    sheet.auto_filter.ref = f"A1:I{header_row + len(units)}"
     sheet.protection.sheet = True
     sheet.protection.enable()
 
