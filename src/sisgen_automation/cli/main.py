@@ -68,6 +68,8 @@ from sisgen_automation.g1.txt import G1TxtResult, create_g1_txt
 from sisgen_automation.comcen.export_dbf import ComcenExportResult, export_comcen_dbf
 from sisgen_automation.g2.sources import G2SourcesValidationResult, validate_g2_sources
 
+from sisgen_automation.g2.txt import G2TxtResult, create_g2_txt
+
 app = typer.Typer(
     help="Herramientas para automatizar formatos SISGEN.",
     no_args_is_help=True,
@@ -1298,6 +1300,67 @@ def validate_g2_sources_command(
 
     if fail_on_errors and result.has_errors:
         raise typer.Exit(code=1)
+
+def _render_g2_txt_summary(result: G2TxtResult) -> None:
+    console.print("")
+    console.print(f"[bold green]TXT G2 generado:[/bold green] {result.output_path}")
+    console.print("")
+
+    table = Table(title=f"Resumen TXT G2 {result.period}")
+    table.add_column("Métrica")
+    table.add_column("Valor", justify="right")
+
+    table.add_row("Registros", str(result.row_count))
+    table.add_row("Distribuidoras", str(result.distributor_count))
+    table.add_row("Advertencias de fuentes", str(result.warnings_count))
+
+    console.print(table)
+
+    if result.warnings_count:
+        console.print(
+            "[bold yellow]El TXT fue generado con advertencias de fuente. "
+            "Revisar validate-g2-sources.[/bold yellow]"
+        )
+        
+@app.command("create-g2-txt")
+def create_g2_txt_command(
+    vepoen: Path = typer.Option(
+        ...,
+        "--vepoen",
+        help="Ruta del archivo VEPOEN.DBF.",
+    ),
+    period: str = typer.Option(
+        ...,
+        "--period",
+        "-p",
+        help="Periodo a generar en formato YYYY-MM. Ejemplo: 2025-12.",
+    ),
+    catalog: Path = typer.Option(
+        ...,
+        "--catalog",
+        "-c",
+        help="Ruta del catálogo local G2 en YAML.",
+    ),
+    output: Optional[Path] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Ruta del TXT generado.",
+    ),
+) -> None:
+    """Genera el Formato G2 en TXT desde VEPOEN."""
+    try:
+        result = create_g2_txt(
+            vepoen_path=vepoen,
+            period=period,
+            catalog_path=catalog,
+            output_path=output,
+        )
+    except ValueError as error:
+        console.print(f"[bold red]Error:[/bold red] {error}")
+        raise typer.Exit(code=1) from error
+
+    _render_g2_txt_summary(result)
 
 @app.command("desktop")
 def desktop_command() -> None:

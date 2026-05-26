@@ -59,6 +59,7 @@ class G2SourcesValidationResult:
     period: str
     rows: list[G2SaleRow]
     issues: list[G2SourceIssue]
+    distributor_order: list[str]
 
     @property
     def errors(self) -> list[G2SourceIssue]:
@@ -279,4 +280,5 @@ def validate_g2_sources(
         period=period,
         rows=rows,
         issues=issues,
+        distributor_order=list(catalog.distributors.keys()),
     )
