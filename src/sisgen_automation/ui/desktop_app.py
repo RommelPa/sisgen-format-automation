@@ -28,10 +28,12 @@ from sisgen_automation.g1.txt import create_g1_txt
 from sisgen_automation.cenhid.template import create_cenhid_template
 from sisgen_automation.center.template import create_center_template
 from sisgen_automation.dacoce.template import create_dacoce_template
+from sisgen_automation.comcen.template import create_comcen_template
 
 from sisgen_automation.cenhid.export_dbf import export_cenhid_dbf
 from sisgen_automation.center.export_dbf import export_center_dbf
 from sisgen_automation.dacoce.export_dbf import export_dacoce_dbf
+from sisgen_automation.comcen.export_dbf import export_comcen_dbf
 
 class G1Worker(QObject):
     finished = Signal(str)
@@ -61,10 +63,12 @@ class G1Worker(QObject):
             cenhid_path = self.raw_dir / "CENHID.DBF"
             center_path = self.raw_dir / "CENTER.DBF"
             dacoce_path = self.raw_dir / "DACOCE.DBF"
+            comcen_path = self.raw_dir / "COMCEN.DBF"
 
             self._ensure_file(cenhid_path)
             self._ensure_file(center_path)
             self._ensure_file(dacoce_path)
+            self._ensure_file(comcen_path)
             self._ensure_file(self.cenhid_catalog)
             self._ensure_file(self.center_catalog)
 
@@ -72,12 +76,14 @@ class G1Worker(QObject):
             self.log.emit(f"CENHID: {cenhid_path}")
             self.log.emit(f"CENTER: {center_path}")
             self.log.emit(f"DACOCE: {dacoce_path}")
+            self.log.emit(f"COMCEN: {comcen_path}")
             self.log.emit("Validando fuentes G1...")
 
             validation = validate_g1_sources(
                 cenhid_path=cenhid_path,
                 center_path=center_path,
                 dacoce_path=dacoce_path,
+                comcen_path=comcen_path,
                 period=self.period,
                 cenhid_catalog_path=self.cenhid_catalog,
                 center_catalog_path=self.center_catalog,
@@ -87,6 +93,7 @@ class G1Worker(QObject):
             self.log.emit(f"Centrales hidro: {len(validation.hydro_blocks)}")
             self.log.emit(f"Grupos termo: {validation.thermal_group_count}")
             self.log.emit(f"Centrales termo: {len(validation.thermal_blocks)}")
+            self.log.emit(f"COMCEN termo: {validation.comcen_record_count}")
             self.log.emit(f"Errores: {len(validation.errors)}")
             self.log.emit(f"Advertencias: {len(validation.warnings)}")
 
@@ -120,6 +127,7 @@ class G1Worker(QObject):
                 cenhid_path=cenhid_path,
                 center_path=center_path,
                 dacoce_path=dacoce_path,
+                comcen_path=comcen_path,
                 period=self.period,
                 cenhid_catalog_path=self.cenhid_catalog,
                 center_catalog_path=self.center_catalog,
@@ -199,6 +207,14 @@ class TemplateWorker(QObject):
             )
             self.log.emit(f"DACOCE: {dacoce_output.output_path}")
 
+            self.log.emit("Generando plantilla COMCEN...")
+            comcen_output = create_comcen_template(
+                period=self.period,
+                catalog_path=self.center_catalog,
+                output_path=templates_dir / f"COMCEN_{period_label}_template.xlsx",
+            )
+            self.log.emit(f"COMCEN: {comcen_output.output_path}")
+
             self.finished.emit(f"Plantillas generadas correctamente en: {templates_dir}")
         except Exception as error:  # noqa: BLE001
             details = traceback.format_exc()
@@ -238,6 +254,7 @@ class ExportDbfWorker(QObject):
             source_cenhid = self.raw_dir / "CENHID.DBF"
             source_center = self.raw_dir / "CENTER.DBF"
             source_dacoce = self.raw_dir / "DACOCE.DBF"
+            source_comcen = self.raw_dir / "COMCEN.DBF"
 
             templates_dir = self.output_dir / "templates"
             output_dbf_dir = self.output_dir / "dbf" / self.period
@@ -246,11 +263,14 @@ class ExportDbfWorker(QObject):
             cenhid_template = templates_dir / f"CENHID_{period_label}_template.xlsx"
             center_template = templates_dir / f"CENTER_{period_label}_template.xlsx"
             dacoce_template = templates_dir / f"DACOCE_{period_label}_template.xlsx"
+            comcen_template = templates_dir / f"COMCEN_{period_label}_template.xlsx"
 
             for path in [
                 source_cenhid,
                 source_center,
                 source_dacoce,
+                source_comcen,
+                comcen_template,
                 cenhid_template,
                 center_template,
                 dacoce_template,
@@ -299,6 +319,18 @@ class ExportDbfWorker(QObject):
             self.log.emit(
                 f"DACOCE exportado: {dacoce_result.output_path} "
                 f"({dacoce_result.appended_record_count} registros nuevos)"
+            )
+            self.log.emit("Exportando COMCEN.DBF...")
+            comcen_result = export_comcen_dbf(
+                source_dbf_path=source_comcen,
+                template_path=comcen_template,
+                period=self.period,
+                catalog_path=self.center_catalog,
+                output_path=output_dbf_dir / "COMCEN.DBF",
+            )
+            self.log.emit(
+                f"COMCEN exportado: {comcen_result.output_path} "
+                f"({comcen_result.appended_record_count} registros nuevos)"
             )
 
             self.exported_dir.emit(str(output_dbf_dir))
@@ -388,7 +420,7 @@ class MainWindow(QMainWindow):
 
         help_box = QLabel(
             "Esta configuración se usa en las pestañas de generación. "
-            "Los archivos esperados son CENHID.DBF, CENTER.DBF y DACOCE.DBF con estructura legacy del programa SISGEN."
+            "Los archivos esperados son CENHID.DBF, CENTER.DBF, DACOCE.DBF y COMCEN.DBF con la estructura que el emulador reconoce correctamente."
         )
         help_box.setWordWrap(True)
         help_box.setStyleSheet("color: #555;")
@@ -407,7 +439,7 @@ class MainWindow(QMainWindow):
         title.setStyleSheet("font-size: 18px; font-weight: bold;")
 
         message = QLabel(
-            "Genera las plantillas Excel de CENHID, CENTER y DACOCE usando el periodo "
+            "Genera las plantillas Excel de CENHID, CENTER, DACOCE y COMCEN usando el periodo "
             "y los catálogos configurados. Las plantillas se guardan en la carpeta de salida."
         )
         message.setWordWrap(True)
@@ -441,7 +473,7 @@ class MainWindow(QMainWindow):
 
         message = QLabel(
             "Valida las plantillas Excel llenas y genera nuevos archivos CENHID.DBF, "
-            "CENTER.DBF y DACOCE.DBF para el periodo configurado."
+            "CENTER.DBF, DACOCE.DBF y COMCEN.DBF para el periodo configurado."
         )
         message.setWordWrap(True)
 
@@ -473,7 +505,7 @@ class MainWindow(QMainWindow):
         title.setStyleSheet("font-size: 18px; font-weight: bold;")
 
         description = QLabel(
-            "Valida CENHID + CENTER + DACOCE y genera el TXT del Formato G1."
+            "Valida CENHID + CENTER + DACOCE + COMCEN y genera el TXT del Formato G1."
         )
         description.setWordWrap(True)
 
