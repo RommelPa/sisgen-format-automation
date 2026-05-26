@@ -990,7 +990,7 @@ def _render_comcen_export_summary(result: ComcenExportResult) -> None:
     table.add_row("Registros finales", str(result.final_record_count))
 
     console.print(table)
-    
+
 @app.command("export-comcen-dbf")
 def export_comcen_dbf_command(
     source_dbf_path: Path = typer.Argument(..., help="Ruta del COMCEN.DBF fuente."),
@@ -1053,6 +1053,7 @@ def _render_g1_sources_summary(
     table.add_row("Grupos termo", str(result.thermal_group_count))
     table.add_row("Centrales termo", str(len(result.thermal_blocks)))
     table.add_row("DACOCE termo", str(result.dacoce_thermal_count))
+    table.add_row("COMCEN termo", str(result.comcen_record_count))
     table.add_row("Errores", str(len(result.errors)))
     table.add_row("Advertencias", str(len(result.warnings)))
 
@@ -1082,6 +1083,11 @@ def validate_g1_sources_command(
         ...,
         "--dacoce",
         help="Ruta del archivo DACOCE.DBF.",
+    ),
+    comcen: Path = typer.Option(
+        ...,
+        "--comcen",
+        help="Ruta del archivo COMCEN.DBF.",
     ),
     period: str = typer.Option(
         ...,
@@ -1117,6 +1123,7 @@ def validate_g1_sources_command(
             cenhid_path=cenhid,
             center_path=center,
             dacoce_path=dacoce,
+            comcen_path=comcen,
             period=period,
             cenhid_catalog_path=cenhid_catalog,
             center_catalog_path=center_catalog,
@@ -1127,7 +1134,7 @@ def validate_g1_sources_command(
 
     output_path = output
     if output_path is None:
-        output_path = Path("reports") / f"G1_{period.replace('-', '_')}_sources_validation.md"
+        output_path = Path("reports") / "g1" / f"G1_{period.replace('-', '_')}_sources_validation.md"
 
     write_g1_sources_validation_markdown(result, output_path)
     _render_g1_sources_summary(result, output_path)
@@ -1176,6 +1183,11 @@ def create_g1_txt_command(
         "--dacoce",
         help="Ruta del archivo DACOCE.DBF.",
     ),
+    comcen: Path = typer.Option(
+        ...,
+        "--comcen",
+        help="Ruta del archivo COMCEN.DBF.",
+    ),
     period: str = typer.Option(
         ...,
         "--period",
@@ -1205,6 +1217,7 @@ def create_g1_txt_command(
             cenhid_path=cenhid,
             center_path=center,
             dacoce_path=dacoce,
+            comcen_path=comcen,
             period=period,
             cenhid_catalog_path=cenhid_catalog,
             center_catalog_path=center_catalog,
