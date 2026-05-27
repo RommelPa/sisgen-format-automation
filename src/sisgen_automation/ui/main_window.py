@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 
 from sisgen_automation.ui.workers.export_dbf import ExportDbfWorker
 from sisgen_automation.ui.workers.g1 import G1Worker
+from sisgen_automation.ui.workers.g11 import G11Worker
 from sisgen_automation.ui.workers.g2 import G2Worker
 from sisgen_automation.ui.workers.templates import TemplateWorker
 
@@ -30,7 +31,7 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         self.worker_thread: QThread | None = None
-        self.worker: G1Worker | TemplateWorker | ExportDbfWorker | G2Worker | None = None
+        self.worker: G1Worker | TemplateWorker | ExportDbfWorker | G2Worker | G11Worker | None = None
 
         self.setWindowTitle("SISGEN Format Automation")
         self.resize(1100, 760)
@@ -41,11 +42,14 @@ class MainWindow(QMainWindow):
         self.cenhid_catalog_input = QLineEdit(str(Path("config/local/cenhid_units.yaml")))
         self.center_catalog_input = QLineEdit(str(Path("config/local/center_units.yaml")))
         self.g2_catalog_input = QLineEdit(str(Path("config/local/g2_distributors.yaml")))
+        self.g11_catalog_input = QLineEdit(str(Path("config/local/g11_units.yaml")))
 
         self.validate_g1_button = QPushButton("Validar fuentes G1")
         self.generate_g1_button = QPushButton("Generar TXT G1")
         self.validate_g2_button = QPushButton("Validar fuentes G2")
         self.generate_g2_button = QPushButton("Generar TXT G2")
+        self.validate_g11_button = QPushButton("Validar fuentes G11")
+        self.generate_g11_button = QPushButton("Generar TXT G11")
         self.generate_templates_button = QPushButton("Generar plantillas mensuales")
         self.export_dbf_button = QPushButton("Exportar DBF mensuales")
         self.clear_log_button = QPushButton("Limpiar logs")
@@ -79,6 +83,7 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self._build_export_tab(), "Exportar DBF")
         self.tabs.addTab(self._build_g1_tab(), "Reporte G1")
         self.tabs.addTab(self._build_g2_tab(), "Reporte G2")
+        self.tabs.addTab(self._build_g11_tab(), "Reporte G11")
         self.tabs.addTab(self._build_logs_tab(), "Logs")
 
         self.setCentralWidget(root)
@@ -111,10 +116,14 @@ class MainWindow(QMainWindow):
             "Catálogo G2:",
             self._path_row(self.g2_catalog_input, self._select_g2_catalog),
         )
+        form.addRow(
+            "Catálogo G11:",
+            self._path_row(self.g11_catalog_input, self._select_g11_catalog),
+        )
 
         help_box = QLabel(
             "El periodo configurado se usa para generar plantillas, exportar DBF y crear reportes. "
-            "La carpeta DBF base debe contener CENHID.DBF, CENTER.DBF, DACOCE.DBF, COMCEN.DBF y VEPOEN.DBF. "
+            "La carpeta DBF base debe contener CENHID.DBF, CENTER.DBF, DACOCE.DBF, COMCEN.DBF, VEPOEN.DBF, CACEHI.DBF y CACETE.DBF. "
             "Para VEPOEN, la plantilla toma automáticamente el último periodo válido del DBF base."
         )
         help_box.setWordWrap(True)
@@ -134,7 +143,7 @@ class MainWindow(QMainWindow):
         title.setStyleSheet("font-size: 18px; font-weight: bold;")
 
         message = QLabel(
-            "Genera las plantillas Excel de CENHID, CENTER, DACOCE, COMCEN y VEPOEN usando el periodo "
+            "Genera las plantillas Excel de CENHID, CENTER, DACOCE, COMCEN, VEPOEN, CACEHI y CACETE usando el periodo "
             "y los catálogos configurados. Las plantillas se guardan en la carpeta de salida."
         )
         message.setWordWrap(True)
@@ -146,7 +155,7 @@ class MainWindow(QMainWindow):
 
         note = QLabel(
             "DACOCE se genera desde los catálogos CENHID y CENTER. "
-            "VEPOEN se genera desde el VEPOEN.DBF base usando automáticamente el último periodo válido."
+            "VEPOEN se genera desde el VEPOEN.DBF base usando automáticamente el último periodo válido. CACEHI y CACETE se generan desde el catálogo G11."
         )
         note.setWordWrap(True)
         note.setStyleSheet("color: #555;")
@@ -168,7 +177,7 @@ class MainWindow(QMainWindow):
 
         message = QLabel(
             "Valida las plantillas Excel llenas y genera nuevos archivos CENHID.DBF, "
-            "CENTER.DBF, DACOCE.DBF, COMCEN.DBF y VEPOEN.DBF para el periodo configurado."
+            "CENTER.DBF, DACOCE.DBF, COMCEN.DBF, VEPOEN.DBF, CACEHI.DBF y CACETE.DBF para el periodo configurado."
         )
         message.setWordWrap(True)
 
@@ -259,6 +268,40 @@ class MainWindow(QMainWindow):
 
         return tab
 
+
+    def _build_g11_tab(self) -> QWidget:
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+
+        title = QLabel("Reporte G11")
+        title.setStyleSheet("font-size: 18px; font-weight: bold;")
+
+        description = QLabel(
+            "Valida CACEHI.DBF + CACETE.DBF desde la carpeta DBF configurada y genera el TXT del Formato G11."
+        )
+        description.setWordWrap(True)
+
+        actions_group = QGroupBox("Acciones")
+        actions_layout = QHBoxLayout(actions_group)
+        actions_layout.addWidget(self.validate_g11_button)
+        actions_layout.addWidget(self.generate_g11_button)
+        actions_layout.addStretch()
+
+        note = QLabel(
+            "Para crear CACEHI.DBF y CACETE.DBF mensuales, usa primero Plantillas y Exportar DBF. "
+            "Después la carpeta DBF se actualiza automáticamente y este reporte usa los DBF exportados."
+        )
+        note.setWordWrap(True)
+        note.setStyleSheet("color: #555;")
+
+        layout.addWidget(title)
+        layout.addWidget(description)
+        layout.addWidget(actions_group)
+        layout.addWidget(note)
+        layout.addStretch()
+
+        return tab
+
     def _build_logs_tab(self) -> QWidget:
         tab = QWidget()
         layout = QVBoxLayout(tab)
@@ -296,6 +339,8 @@ class MainWindow(QMainWindow):
         self.generate_g1_button.clicked.connect(lambda: self._start_worker("generate"))
         self.validate_g2_button.clicked.connect(lambda: self._start_g2_worker("validate"))
         self.generate_g2_button.clicked.connect(lambda: self._start_g2_worker("generate"))
+        self.validate_g11_button.clicked.connect(lambda: self._start_g11_worker("validate"))
+        self.generate_g11_button.clicked.connect(lambda: self._start_g11_worker("generate"))
         self.generate_templates_button.clicked.connect(self._start_template_worker)
         self.export_dbf_button.clicked.connect(self._start_export_dbf_worker)
         self.clear_log_button.clicked.connect(self.log_output.clear)
@@ -315,6 +360,9 @@ class MainWindow(QMainWindow):
 
     def _select_g2_catalog(self) -> None:
         self._select_file(self.g2_catalog_input, "YAML (*.yaml *.yml)")
+
+    def _select_g11_catalog(self) -> None:
+        self._select_file(self.g11_catalog_input, "YAML (*.yaml *.yml)")
 
     def _select_directory(self, target: QLineEdit) -> None:
         selected = QFileDialog.getExistingDirectory(self, "Seleccionar carpeta")
@@ -349,6 +397,7 @@ class MainWindow(QMainWindow):
             cenhid_catalog=Path(self.cenhid_catalog_input.text().strip()),
             center_catalog=Path(self.center_catalog_input.text().strip()),
             g2_catalog=Path(self.g2_catalog_input.text().strip()),
+            g11_catalog=Path(self.g11_catalog_input.text().strip()),
         )
 
         self.worker.moveToThread(self.worker_thread)
@@ -381,6 +430,7 @@ class MainWindow(QMainWindow):
             cenhid_catalog=Path(self.cenhid_catalog_input.text().strip()),
             center_catalog=Path(self.center_catalog_input.text().strip()),
             g2_catalog=Path(self.g2_catalog_input.text().strip()),
+            g11_catalog=Path(self.g11_catalog_input.text().strip()),
         )
 
         self.worker.moveToThread(self.worker_thread)
@@ -459,6 +509,37 @@ class MainWindow(QMainWindow):
 
         self.worker_thread.start()
 
+    def _start_g11_worker(self, action: str) -> None:
+        if self.worker_thread is not None:
+            QMessageBox.warning(self, "Proceso en ejecución", "Ya hay un proceso ejecutándose.")
+            return
+
+        self._show_logs_tab()
+        self._set_buttons_enabled(False)
+        self._append_log("=" * 80)
+        self._append_log("Iniciando proceso G11...")
+
+        self.worker_thread = QThread()
+        self.worker = G11Worker(
+            action=action,
+            period=self.period_input.text().strip(),
+            raw_dir=Path(self.raw_dir_input.text().strip()),
+            output_dir=Path(self.output_dir_input.text().strip()),
+            g11_catalog=Path(self.g11_catalog_input.text().strip()),
+        )
+
+        self.worker.moveToThread(self.worker_thread)
+
+        self.worker_thread.started.connect(self.worker.run)
+        self.worker.log.connect(self._append_log)
+        self.worker.finished.connect(self._handle_success)
+        self.worker.failed.connect(self._handle_failure)
+        self.worker.finished.connect(self.worker_thread.quit)
+        self.worker.failed.connect(self.worker_thread.quit)
+        self.worker_thread.finished.connect(self._cleanup_worker)
+
+        self.worker_thread.start()
+
     def _handle_success(self, message: str) -> None:
         self._append_log(message)
         QMessageBox.information(self, "Proceso completado", message)
@@ -480,8 +561,9 @@ class MainWindow(QMainWindow):
         self.generate_g1_button.setEnabled(enabled)
         self.validate_g2_button.setEnabled(enabled)
         self.generate_g2_button.setEnabled(enabled)
+        self.validate_g11_button.setEnabled(enabled)
+        self.generate_g11_button.setEnabled(enabled)
         self.clear_log_button.setEnabled(enabled)
 
     def _append_log(self, message: str) -> None:
         self.log_output.append(message)
-

@@ -5,6 +5,8 @@ from pathlib import Path
 
 from PySide6.QtCore import QObject, Signal
 
+from sisgen_automation.cacehi.template import create_cacehi_template
+from sisgen_automation.cacete.template import create_cacete_template
 from sisgen_automation.cenhid.template import create_cenhid_template
 from sisgen_automation.center.template import create_center_template
 from sisgen_automation.comcen.template import create_comcen_template
@@ -27,6 +29,7 @@ class TemplateWorker(QObject, WorkerFileMixin):
         cenhid_catalog: Path,
         center_catalog: Path,
         g2_catalog: Path,
+        g11_catalog: Path,
     ) -> None:
         super().__init__()
         self.period = period
@@ -35,12 +38,14 @@ class TemplateWorker(QObject, WorkerFileMixin):
         self.cenhid_catalog = cenhid_catalog
         self.center_catalog = center_catalog
         self.g2_catalog = g2_catalog
+        self.g11_catalog = g11_catalog
 
     def run(self) -> None:
         try:
             self._ensure_file(self.cenhid_catalog)
             self._ensure_file(self.center_catalog)
             self._ensure_file(self.g2_catalog)
+            self._ensure_file(self.g11_catalog)
 
             dacoce_path = self.raw_dir / "DACOCE.DBF"
             vepoen_path = self.raw_dir / "VEPOEN.DBF"
@@ -98,6 +103,22 @@ class TemplateWorker(QObject, WorkerFileMixin):
                 output_path=templates_dir / f"VEPOEN_{period_label}_template.xlsx",
             )
             self.log.emit(f"VEPOEN: {vepoen_output.output_path}")
+
+            self.log.emit("Generando plantilla CACEHI...")
+            cacehi_output = create_cacehi_template(
+                period=self.period,
+                catalog_path=self.g11_catalog,
+                output_path=templates_dir / f"CACEHI_{period_label}_template.xlsx",
+            )
+            self.log.emit(f"CACEHI: {cacehi_output.output_path}")
+
+            self.log.emit("Generando plantilla CACETE...")
+            cacete_output = create_cacete_template(
+                period=self.period,
+                catalog_path=self.g11_catalog,
+                output_path=templates_dir / f"CACETE_{period_label}_template.xlsx",
+            )
+            self.log.emit(f"CACETE: {cacete_output.output_path}")
 
             self.finished.emit(f"Plantillas generadas correctamente en: {templates_dir}")
         except Exception as error:  # noqa: BLE001

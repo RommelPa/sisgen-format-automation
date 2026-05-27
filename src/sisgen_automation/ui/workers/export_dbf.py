@@ -5,6 +5,10 @@ from pathlib import Path
 
 from PySide6.QtCore import QObject, Signal
 
+from sisgen_automation.cacehi.export_dbf import export_cacehi_dbf
+from sisgen_automation.cacehi.template_validation import validate_cacehi_template
+from sisgen_automation.cacete.export_dbf import export_cacete_dbf
+from sisgen_automation.cacete.template_validation import validate_cacete_template
 from sisgen_automation.cenhid.export_dbf import export_cenhid_dbf
 from sisgen_automation.cenhid.template_validation import validate_cenhid_template
 from sisgen_automation.center.export_dbf import export_center_dbf
@@ -33,6 +37,7 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
         cenhid_catalog: Path,
         center_catalog: Path,
         g2_catalog: Path,
+        g11_catalog: Path,
     ) -> None:
         super().__init__()
         self.period = period
@@ -41,6 +46,7 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
         self.cenhid_catalog = cenhid_catalog
         self.center_catalog = center_catalog
         self.g2_catalog = g2_catalog
+        self.g11_catalog = g11_catalog
 
     def _validate_all_templates(
         self,
@@ -50,6 +56,8 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
         dacoce_template: Path,
         comcen_template: Path,
         vepoen_template: Path,
+        cacehi_template: Path,
+        cacete_template: Path,
     ) -> None:
         self.log.emit("Validando todas las plantillas antes de exportar DBF...")
 
@@ -102,6 +110,26 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
             f"advertencias={vepoen_result.warning_count}"
         )
 
+        cacehi_result = validate_cacehi_template(
+            template_path=cacehi_template,
+            period=self.period,
+            catalog_path=self.g11_catalog,
+        )
+        self.log.emit(
+            f"CACEHI validación: errores={cacehi_result.error_count}, "
+            f"advertencias={cacehi_result.warning_count}"
+        )
+
+        cacete_result = validate_cacete_template(
+            template_path=cacete_template,
+            period=self.period,
+            catalog_path=self.g11_catalog,
+        )
+        self.log.emit(
+            f"CACETE validación: errores={cacete_result.error_count}, "
+            f"advertencias={cacete_result.warning_count}"
+        )
+
         def _issue_location(issue: object) -> str:
             row = getattr(issue, "row", None)
             return f"fila {row}" if row is not None else "general"
@@ -128,6 +156,8 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
             or dacoce_result.has_errors
             or comcen_result.has_errors
             or vepoen_result.has_errors
+            or cacehi_result.has_errors
+            or cacete_result.has_errors
         )
 
         if not has_errors:
@@ -166,6 +196,20 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
                     f"{_issue_field(issue)} | {_issue_message(issue)} | {_issue_value(issue)}"
                 )
 
+        for issue in cacehi_result.issues[:10]:
+            if _is_error_issue(issue):
+                self.log.emit(
+                    f"ERROR CACEHI | {_issue_location(issue)} | "
+                    f"{_issue_field(issue)} | {_issue_message(issue)} | {_issue_value(issue)}"
+                )
+
+        for issue in cacete_result.issues[:10]:
+            if _is_error_issue(issue):
+                self.log.emit(
+                    f"ERROR CACETE | {_issue_location(issue)} | "
+                    f"{_issue_field(issue)} | {_issue_message(issue)} | {_issue_value(issue)}"
+                )
+
         raise ValueError(
             "Una o más plantillas tienen errores. No se exportó ningún DBF."
         )
@@ -179,6 +223,8 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
             source_dacoce = self.raw_dir / "DACOCE.DBF"
             source_comcen = self.raw_dir / "COMCEN.DBF"
             source_vepoen = self.raw_dir / "VEPOEN.DBF"
+            source_cacehi = self.raw_dir / "CACEHI.DBF"
+            source_cacete = self.raw_dir / "CACETE.DBF"
 
             templates_dir = self.output_dir / "templates"
             output_dbf_dir = self.output_dir / "dbf" / self.period
@@ -188,6 +234,8 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
             dacoce_template = templates_dir / f"DACOCE_{period_label}_template.xlsx"
             comcen_template = templates_dir / f"COMCEN_{period_label}_template.xlsx"
             vepoen_template = templates_dir / f"VEPOEN_{period_label}_template.xlsx"
+            cacehi_template = templates_dir / f"CACEHI_{period_label}_template.xlsx"
+            cacete_template = templates_dir / f"CACETE_{period_label}_template.xlsx"
 
             for path in [
                 source_cenhid,
@@ -195,14 +243,19 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
                 source_dacoce,
                 source_comcen,
                 source_vepoen,
+                source_cacehi,
+                source_cacete,
                 cenhid_template,
                 center_template,
                 dacoce_template,
                 comcen_template,
                 vepoen_template,
+                cacehi_template,
+                cacete_template,
                 self.cenhid_catalog,
                 self.center_catalog,
                 self.g2_catalog,
+                self.g11_catalog,
             ]:
                 self._ensure_file(path)
 
@@ -216,6 +269,8 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
                 dacoce_template=dacoce_template,
                 comcen_template=comcen_template,
                 vepoen_template=vepoen_template,
+                cacehi_template=cacehi_template,
+                cacete_template=cacete_template,
             )
 
             output_dbf_dir.mkdir(parents=True, exist_ok=True)
@@ -282,6 +337,32 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
             self.log.emit(
                 f"VEPOEN exportado: {vepoen_result.output_path} "
                 f"({vepoen_result.appended_record_count} registros nuevos)"
+            )
+
+            self.log.emit("Exportando CACEHI.DBF...")
+            cacehi_result = export_cacehi_dbf(
+                source_dbf_path=source_cacehi,
+                template_path=cacehi_template,
+                period=self.period,
+                catalog_path=self.g11_catalog,
+                output_path=output_dbf_dir / "CACEHI.DBF",
+            )
+            self.log.emit(
+                f"CACEHI exportado: {cacehi_result.output_path} "
+                f"({cacehi_result.appended_record_count} registros nuevos)"
+            )
+
+            self.log.emit("Exportando CACETE.DBF...")
+            cacete_result = export_cacete_dbf(
+                source_dbf_path=source_cacete,
+                template_path=cacete_template,
+                period=self.period,
+                catalog_path=self.g11_catalog,
+                output_path=output_dbf_dir / "CACETE.DBF",
+            )
+            self.log.emit(
+                f"CACETE exportado: {cacete_result.output_path} "
+                f"({cacete_result.appended_record_count} registros nuevos)"
             )
 
             self.exported_dir.emit(str(output_dbf_dir))
