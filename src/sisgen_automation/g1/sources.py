@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Literal
@@ -44,6 +44,12 @@ class G1GroupRow:
     operation_hours: Decimal
     forced_outage_hours: Decimal
     lubricant_consumption: Decimal | None = None
+    comcen_ccodcen: str = ""
+    comcen_ctipgru: str = ""
+    comcen_cnomnum: str = ""
+    fuel_code: str = ""
+    fuel_description: str = ""
+    fuel_consumption: Decimal = Decimal("0")
 
 
 @dataclass(frozen=True)
@@ -54,6 +60,14 @@ class G1DacoceRow:
     net_production: Decimal
     max_demand: Decimal
 
+@dataclass(frozen=True)
+class G1ComcenRow:
+    ccodcen: str
+    ctipgru: str
+    cnomnum: str
+    fuel_code: str
+    fuel_description: str
+    fuel_consumption: Decimal
 
 @dataclass(frozen=True)
 class G1CentralBlock:
@@ -116,6 +130,8 @@ class G1SourcesValidationResult:
     cenhid_path: Path
     center_path: Path
     dacoce_path: Path
+    comcen_path: Path
+    comcen_record_count: int
     cenhid_catalog_path: Path
     center_catalog_path: Path
     period: str
@@ -427,6 +443,9 @@ def _read_center_groups(
                 operation_hours=_require_decimal(record.get("CHRSOPE"), issues, "TERMO", "CENTER", "CHRSOPE", context),
                 forced_outage_hours=_require_decimal(record.get("CHRSSAL"), issues, "TERMO", "CENTER", "CHRSSAL", context),
                 lubricant_consumption=_require_decimal(record.get("NCONLUB"), issues, "TERMO", "CENTER", "NCONLUB", context),
+                comcen_ccodcen=_clean_text(record.get("CCODCEN")),
+                comcen_ctipgru=_clean_text(record.get("CTIPGRU")),
+                comcen_cnomnum=_clean_text(record.get("CNOMNUM")),
             )
         )
 
@@ -611,11 +630,137 @@ def _warn_extra_dacoce_rows(
             f"{key[0]} / {key[1]}",
         )
 
+def _parse_period(period: str) -> tuple[str, str]:
+    try:
+        year_text, month_text = period.split("-", maxsplit=1)
+    except ValueError as exc:
+        raise ValueError("El periodo debe tener formato YYYY-MM, por ejemplo 2026-01.") from exc
+
+    if len(year_text) != 4 or len(month_text) != 2:
+        raise ValueError("El periodo debe tener formato YYYY-MM, por ejemplo 2026-01.")
+
+    year = int(year_text)
+    month = int(month_text)
+
+    if not 1 <= month <= 12:
+        raise ValueError("El mes del periodo debe estar entre 01 y 12.")
+
+    return f"{year % 100:02d}", f"{month:02d}"
+
+def _read_comcen_rows(
+    comcen_path: Path,
+    period: str,
+    issues: list[G1SourceIssue],
+) -> dict[tuple[str, str, str], G1ComcenRow]:
+    year_short, month = _parse_period(period)
+
+    table = DBF(str(comcen_path), load=True, char_decode_errors="ignore")
+
+    rows: dict[tuple[str, str, str], G1ComcenRow] = {}
+
+    for record in table:
+        if _clean_text(record.get("CANOREG")) != year_short:
+            continue
+
+        if _clean_text(record.get("CMESREG")).zfill(2) != month:
+            continue
+
+        ccodcen = _clean_text(record.get("CCODCEN"))
+        ctipgru = _clean_text(record.get("CTIPGRU"))
+        cnomnum = _clean_text(record.get("CNOMNUM"))
+        fuel_code = _clean_text(record.get("CCODCOM"))
+        fuel_description = _clean_text(record.get("CDESCOM"))
+
+        context = f"{ccodcen} / {ctipgru} / {cnomnum} / {fuel_code}"
+        key = (ccodcen, ctipgru, cnomnum)
+
+        if key in rows:
+            _add_issue(
+                issues,
+                "ERROR",
+                "TERMO",
+                "COMCEN",
+                "CCODCEN/CTIPGRU/CNOMNUM",
+                "COMCEN tiene más de un registro para el mismo grupo térmico en el periodo.",
+                context,
+            )
+            continue
+
+        rows[key] = G1ComcenRow(
+            ccodcen=ccodcen,
+            ctipgru=ctipgru,
+            cnomnum=cnomnum,
+            fuel_code=fuel_code,
+            fuel_description=fuel_description,
+            fuel_consumption=_require_decimal(
+                record.get("NTOTCOM"),
+                issues,
+                "TERMO",
+                "COMCEN",
+                "NTOTCOM",
+                context,
+            ),
+        )
+
+    return rows
+
+def _attach_comcen_to_thermal_groups(
+    thermal_groups: list[G1GroupRow],
+    comcen_rows: dict[tuple[str, str, str], G1ComcenRow],
+    issues: list[G1SourceIssue],
+) -> list[G1GroupRow]:
+    enriched_groups: list[G1GroupRow] = []
+    used_keys: set[tuple[str, str, str]] = set()
+
+    for group in thermal_groups:
+        key = (group.comcen_ccodcen, group.comcen_ctipgru, group.comcen_cnomnum)
+        comcen = comcen_rows.get(key)
+
+        if comcen is None:
+            _add_issue(
+                issues,
+                "WARNING",
+                "TERMO",
+                "COMCEN",
+                "CCODCEN/CTIPGRU/CNOMNUM",
+                "COMCEN tiene un grupo que no existe en CENTER para el periodo. No se incluirá en G1.",
+                " / ".join(key),
+            )
+
+            enriched_groups.append(group)
+            continue
+
+        used_keys.add(key)
+
+        enriched_groups.append(
+            replace(
+                group,
+                fuel_code=comcen.fuel_code,
+                fuel_description=comcen.fuel_description,
+                fuel_consumption=comcen.fuel_consumption,
+            )
+        )
+
+    for key in sorted(set(comcen_rows) - used_keys):
+        issues.append(
+            G1SourceIssue(
+                severity=IssueSeverity.WARNING,
+                section="TERMO",
+                source="COMCEN",
+                field="CCODCEN/CTIPGRU/CNOMNUM",
+                message="COMCEN tiene un grupo que no existe en CENTER para el periodo. No se incluirá en G1.",
+                context=" / ".join(key),
+            )
+        )
+
+    return enriched_groups
 
 def validate_g1_sources(
+    *,
     cenhid_path: Path,
     center_path: Path,
     dacoce_path: Path,
+    comcen_path: Path,
     period: str,
     cenhid_catalog_path: Path,
     center_catalog_path: Path,
@@ -638,6 +783,16 @@ def validate_g1_sources(
     dacoce_rows = _read_dacoce_rows(
         dacoce_path=dacoce_path,
         period=period,
+        issues=issues,
+    )
+    comcen_rows = _read_comcen_rows(
+        comcen_path=comcen_path,
+        period=period,
+        issues=issues,
+    )
+    thermal_groups = _attach_comcen_to_thermal_groups(
+        thermal_groups=thermal_groups,
+        comcen_rows=comcen_rows,
         issues=issues,
     )
 
@@ -686,6 +841,8 @@ def validate_g1_sources(
         cenhid_path=cenhid_path,
         center_path=center_path,
         dacoce_path=dacoce_path,
+        comcen_path=comcen_path,
+        comcen_record_count=len(comcen_rows),
         cenhid_catalog_path=cenhid_catalog_path,
         center_catalog_path=center_catalog_path,
         period=period,
@@ -718,6 +875,7 @@ def g1_sources_validation_to_markdown(
     lines.append(f"| CENHID | `{result.cenhid_path}` |")
     lines.append(f"| CENTER | `{result.center_path}` |")
     lines.append(f"| DACOCE | `{result.dacoce_path}` |")
+    lines.append(f"| COMCEN | `{result.comcen_path}` |")
     lines.append(f"| Catálogo CENHID | `{result.cenhid_catalog_path}` |")
     lines.append(f"| Catálogo CENTER | `{result.center_catalog_path}` |")
     lines.append(f"| Periodo | {result.period} |")
@@ -727,6 +885,7 @@ def g1_sources_validation_to_markdown(
     lines.append(f"| Centrales termoeléctricas | {len(result.thermal_blocks)} |")
     lines.append(f"| DACOCE hidro | {result.dacoce_hydro_count} |")
     lines.append(f"| DACOCE termo | {result.dacoce_thermal_count} |")
+    lines.append(f"| COMCEN termo | {result.comcen_record_count} |")
     lines.append(f"| Errores | {len(result.errors)} |")
     lines.append(f"| Advertencias | {len(result.warnings)} |")
     lines.append("")

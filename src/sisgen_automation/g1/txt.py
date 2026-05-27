@@ -319,8 +319,8 @@ def _thermal_group_row(row: G1GroupRow) -> str:
             _num2(row.maintenance_hours, 10),
             _num2(row.operation_hours, 11),
             _num2(row.forced_outage_hours, 10),
-            "",
-            "",
+            row.fuel_code,
+            _num2(row.fuel_consumption, 10),
             _num2(row.lubricant_consumption or Decimal("0"), 12),
         ],
         THERMAL_WIDTHS,
@@ -528,6 +528,7 @@ def create_g1_txt(
     cenhid_path: Path,
     center_path: Path,
     dacoce_path: Path,
+    comcen_path: Path,
     period: str,
     cenhid_catalog_path: Path,
     center_catalog_path: Path,
@@ -538,6 +539,7 @@ def create_g1_txt(
         cenhid_path=cenhid_path,
         center_path=center_path,
         dacoce_path=dacoce_path,
+        comcen_path=comcen_path,
         period=period,
         cenhid_catalog_path=cenhid_catalog_path,
         center_catalog_path=center_catalog_path,
@@ -550,7 +552,7 @@ def create_g1_txt(
         )
 
     if output_path is None:
-        output_path = Path("reports") / f"G1_{period.replace('-', '_')}.txt"
+        output_path = Path("reports") / "g1" / f"G1_{period.replace('-', '_')}.txt"
 
     if report_date is None:
         report_date = _default_report_date(period)

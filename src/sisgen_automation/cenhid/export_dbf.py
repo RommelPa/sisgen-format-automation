@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 from typing import Mapping
@@ -12,7 +11,7 @@ from openpyxl import load_workbook
 from sisgen_automation.cenhid.template import CENHID_HEADERS, parse_period
 from sisgen_automation.cenhid.template_validation import validate_cenhid_template
 from sisgen_automation.dbf.profile import DbfField, read_dbf_profile
-
+from sisgen_automation.dbf.compatibility import assert_sisgen_expected_layout
 
 DBF_ENCODING = "cp850"
 DBF_EOF_MARKER = b"\x1A"
@@ -165,21 +164,24 @@ def _write_appended_dbf(
                 f"El registro nuevo #{index} tiene longitud inválida: "
                 f"{len(record)} != {profile.record_length}"
             )
+        
+    source_has_eof = (
+        len(source_bytes) > expected_data_end
+        and source_bytes[expected_data_end : expected_data_end + 1] == DBF_EOF_MARKER
+    )
 
-    today = date.today()
     final_record_count = profile.record_count + len(serialized_records)
 
-    header[1] = today.year - 1900
-    header[2] = today.month
-    header[3] = today.day
+    # Compatibilidad legacy:
+    # conservamos la cabecera original y solo actualizamos el contador de registros.
     header[4:8] = final_record_count.to_bytes(4, byteorder="little")
 
-    output_path.write_bytes(
-        bytes(header)
-        + existing_records
-        + b"".join(serialized_records)
-        + DBF_EOF_MARKER
-    )
+    output_bytes = bytes(header) + existing_records + b"".join(serialized_records)
+
+    if source_has_eof:
+        output_bytes += DBF_EOF_MARKER
+
+    output_path.write_bytes(output_bytes)
 
     return CenhidExportResult(
         source_dbf_path=source_dbf_path,
@@ -200,6 +202,7 @@ def export_cenhid_dbf(
     output_path: Path | None = None,
     allow_existing_period: bool = False,
 ) -> CenhidExportResult:
+    assert_sisgen_expected_layout(source_dbf_path, "CENHID")
     validation_result = validate_cenhid_template(
         template_path=template_path,
         period=period,

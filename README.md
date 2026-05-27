@@ -108,13 +108,13 @@ sisgen create-cenhid-template --period 2026-01 --catalog config\local\cenhid_uni
 ### Validar plantilla CENHID
 
 ```powershell
-sisgen validate-cenhid-template templates\CENHID_2026_01_template.xlsx --period 2026-01 --catalog config\local\cenhid_units.yaml
+sisgen validate-cenhid-template reports\templates\CENHID_2026_01_template.xlsx --period 2026-01 --catalog config\local\cenhid_units.yaml
 ```
 
 ### Exportar CENHID DBF
 
 ```powershell
-sisgen export-cenhid-dbf data\raw\CENHID.DBF templates\CENHID_2026_01_template.xlsx --period 2026-01 --catalog config\local\cenhid_units.yaml
+sisgen export-cenhid-dbf data\raw\CENHID.DBF reports\templates\CENHID_2026_01_template.xlsx --period 2026-01 --catalog config\local\cenhid_units.yaml
 ```
 
 ### Validar fuentes G1
@@ -177,7 +177,6 @@ Ejemplos:
 data/raw/*.DBF
 data/output/
 reports/
-templates/*.xlsx
 config/local/*.yaml
 .venv/
 __pycache__/

@@ -334,9 +334,10 @@ def create_dacoce_template(
             source_dbf_path=source_dbf_path,
             base_period=base_period,
         )
-
+    
+    year_text, month_text = period.split("-", maxsplit=1)
     if output_path is None:
-        output_path = Path("templates") / f"DACOCE_{period.replace('-', '_')}_template.xlsx"
+        output_path = Path("reports") / "templates" / f"DACOCE_{year_text}_{month_text}_template.xlsx"
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
