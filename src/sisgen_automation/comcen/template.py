@@ -159,12 +159,11 @@ def create_comcen_template(
             "CNOMNUM": unit.cnomnum,
             "CCODCOM": DEFAULT_FUEL_CODE,
             "CDESCOM": DEFAULT_FUEL_DESCRIPTION,
-            "NTOTCOM": 0,
+            "NTOTCOM": None,
         }
 
         for col_index, header in enumerate(COMCEN_HEADERS, start=1):
             cell = sheet.cell(row=row_index, column=col_index, value=values[header])
-            cell.border = border
 
             if header in EDITABLE_HEADERS:
                 cell.fill = editable_fill

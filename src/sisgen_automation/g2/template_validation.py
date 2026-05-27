@@ -297,7 +297,7 @@ def validate_vepoen_template(
         nprenfu = _require_decimal(raw=raw, field="NPRENFU", row_index=row_index, issues=issues)
         nenveho = _require_decimal(raw=raw, field="NENVEHO", row_index=row_index, issues=issues)
         nenvefu = _require_decimal(raw=raw, field="NENVEFU", row_index=row_index, issues=issues)
-        nenveto = _require_decimal(raw=raw, field="NENVETO", row_index=row_index, issues=issues)
+        nenveto = nenveho + nenvefu
         npocoho = _require_decimal(raw=raw, field="NPOCOHO", row_index=row_index, issues=issues)
         npocofu = _require_decimal(raw=raw, field="NPOCOFU", row_index=row_index, issues=issues)
         nmadeho = _decimal_or_zero(raw["NMADEHO"])
@@ -325,19 +325,6 @@ def validate_vepoen_template(
                 field="NMADEFU",
                 message="NMADEFU no puede ser negativo.",
                 value=nmadefu,
-            )
-
-        energy_total_expected = nenveho + nenvefu
-
-        if abs(nenveto - energy_total_expected) > Decimal("0.001"):
-            row_has_error = True
-            _add_issue(
-                issues,
-                severity=IssueSeverity.ERROR,
-                row=row_index,
-                field="NENVETO",
-                message="NENVETO debe ser igual a NENVEHO + NENVEFU.",
-                value=f"NENVETO={nenveto}; esperado={energy_total_expected}",
             )
 
         unique_key = (

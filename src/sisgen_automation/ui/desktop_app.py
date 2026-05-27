@@ -34,6 +34,13 @@ from sisgen_automation.g1.sources import validate_g1_sources
 from sisgen_automation.g1.txt import create_g1_txt
 from sisgen_automation.g2.sources import validate_g2_sources
 from sisgen_automation.g2.txt import create_g2_txt
+from sisgen_automation.g2.template import create_vepoen_template
+from sisgen_automation.g2.export_dbf import export_vepoen_dbf
+from sisgen_automation.cenhid.template_validation import validate_cenhid_template
+from sisgen_automation.center.template_validation import validate_center_template
+from sisgen_automation.dacoce.template_validation import validate_dacoce_template
+from sisgen_automation.comcen.template_validation import validate_comcen_template
+from sisgen_automation.g2.template_validation import validate_vepoen_template
 
 
 class G1Worker(QObject):
@@ -160,6 +167,7 @@ class TemplateWorker(QObject):
         output_dir: Path,
         cenhid_catalog: Path,
         center_catalog: Path,
+        g2_catalog: Path,
     ) -> None:
         super().__init__()
         self.period = period
@@ -167,14 +175,18 @@ class TemplateWorker(QObject):
         self.output_dir = output_dir
         self.cenhid_catalog = cenhid_catalog
         self.center_catalog = center_catalog
+        self.g2_catalog = g2_catalog
 
     def run(self) -> None:
         try:
             self._ensure_file(self.cenhid_catalog)
             self._ensure_file(self.center_catalog)
+            self._ensure_file(self.g2_catalog)
 
             dacoce_path = self.raw_dir / "DACOCE.DBF"
+            vepoen_path = self.raw_dir / "VEPOEN.DBF"
             self._ensure_file(dacoce_path)
+            self._ensure_file(vepoen_path)
 
             templates_dir = self.output_dir / "templates"
             templates_dir.mkdir(parents=True, exist_ok=True)
@@ -218,6 +230,16 @@ class TemplateWorker(QObject):
             )
             self.log.emit(f"COMCEN: {comcen_output.output_path}")
 
+            self.log.emit("Generando plantilla VEPOEN...")
+            vepoen_output = create_vepoen_template(
+                period=self.period,
+                source_dbf_path=vepoen_path,
+                catalog_path=self.g2_catalog,
+                base_period=None,
+                output_path=templates_dir / f"VEPOEN_{period_label}_template.xlsx",
+            )
+            self.log.emit(f"VEPOEN: {vepoen_output.output_path}")
+
             self.finished.emit(f"Plantillas generadas correctamente en: {templates_dir}")
         except Exception as error:  # noqa: BLE001
             details = traceback.format_exc()
@@ -243,6 +265,7 @@ class ExportDbfWorker(QObject):
         output_dir: Path,
         cenhid_catalog: Path,
         center_catalog: Path,
+        g2_catalog: Path,
     ) -> None:
         super().__init__()
         self.period = period
@@ -250,6 +273,135 @@ class ExportDbfWorker(QObject):
         self.output_dir = output_dir
         self.cenhid_catalog = cenhid_catalog
         self.center_catalog = center_catalog
+        self.g2_catalog = g2_catalog
+
+    def _validate_all_templates(
+        self,
+        *,
+        cenhid_template: Path,
+        center_template: Path,
+        dacoce_template: Path,
+        comcen_template: Path,
+        vepoen_template: Path,
+    ) -> None:
+        self.log.emit("Validando todas las plantillas antes de exportar DBF...")
+
+        cenhid_result = validate_cenhid_template(
+            template_path=cenhid_template,
+            period=self.period,
+            catalog_path=self.cenhid_catalog,
+        )
+        self.log.emit(
+            f"CENHID validación: errores={len(cenhid_result.errors)}, "
+            f"advertencias={len(cenhid_result.warnings)}"
+        )
+
+        center_result = validate_center_template(
+            template_path=center_template,
+            period=self.period,
+            catalog_path=self.center_catalog,
+        )
+        self.log.emit(
+            f"CENTER validación: errores={len(center_result.errors)}, "
+            f"advertencias={len(center_result.warnings)}"
+        )
+
+        dacoce_result = validate_dacoce_template(
+            template_path=dacoce_template,
+            period=self.period,
+        )
+        self.log.emit(
+            f"DACOCE validación: errores={len(dacoce_result.errors)}, "
+            f"advertencias={len(dacoce_result.warnings)}"
+        )
+
+        comcen_result = validate_comcen_template(
+            template_path=comcen_template,
+            period=self.period,
+            catalog_path=self.center_catalog,
+        )
+        self.log.emit(
+            f"COMCEN validación: errores={comcen_result.error_count}, "
+            f"advertencias={comcen_result.warning_count}"
+        )
+
+        vepoen_result = validate_vepoen_template(
+            template_path=vepoen_template,
+            period=self.period,
+            catalog_path=self.g2_catalog,
+        )
+        self.log.emit(
+            f"VEPOEN validación: errores={vepoen_result.error_count}, "
+            f"advertencias={vepoen_result.warning_count}"
+        )
+
+        def _issue_location(issue: object) -> str:
+            row = getattr(issue, "row", None)
+            return f"fila {row}" if row is not None else "general"
+
+        def _issue_field(issue: object) -> str:
+            return str(getattr(issue, "field", "") or "")
+
+        def _issue_message(issue: object) -> str:
+            return str(getattr(issue, "message", issue))
+
+        def _issue_value(issue: object) -> str:
+            value = getattr(issue, "value", "")
+            return "" if value is None else str(value)
+
+        def _is_error_issue(issue: object) -> bool:
+            severity = getattr(issue, "severity", None)
+            value = getattr(severity, "value", severity)
+            return str(value) == "ERROR"
+
+
+        has_errors = (
+            cenhid_result.has_errors
+            or center_result.has_errors
+            or dacoce_result.has_errors
+            or comcen_result.has_errors
+            or vepoen_result.has_errors
+        )
+
+        if not has_errors:
+            self.log.emit("Todas las plantillas están listas para exportar.")
+            return
+
+        for issue in cenhid_result.errors[:10]:
+            self.log.emit(
+                f"ERROR CENHID | {_issue_location(issue)} | "
+                f"{_issue_field(issue)} | {_issue_message(issue)} | {_issue_value(issue)}"
+            )
+
+        for issue in center_result.errors[:10]:
+            self.log.emit(
+                f"ERROR CENTER | {_issue_location(issue)} | "
+                f"{_issue_field(issue)} | {_issue_message(issue)} | {_issue_value(issue)}"
+            )
+
+        for issue in dacoce_result.errors[:10]:
+            self.log.emit(
+                f"ERROR DACOCE | {_issue_location(issue)} | "
+                f"{_issue_field(issue)} | {_issue_message(issue)} | {_issue_value(issue)}"
+            )
+
+        for issue in comcen_result.issues[:10]:
+            if _is_error_issue(issue):
+                self.log.emit(
+                    f"ERROR COMCEN | {_issue_location(issue)} | "
+                    f"{_issue_field(issue)} | {_issue_message(issue)} | {_issue_value(issue)}"
+                )
+
+        for issue in vepoen_result.issues[:10]:
+            if _is_error_issue(issue):
+                self.log.emit(
+                    f"ERROR VEPOEN | {_issue_location(issue)} | "
+                    f"{_issue_field(issue)} | {_issue_message(issue)} | {_issue_value(issue)}"
+                )
+
+        raise ValueError(
+            "Una o más plantillas tienen errores. No se exportó ningún DBF."
+        )
 
     def run(self) -> None:
         try:
@@ -259,33 +411,47 @@ class ExportDbfWorker(QObject):
             source_center = self.raw_dir / "CENTER.DBF"
             source_dacoce = self.raw_dir / "DACOCE.DBF"
             source_comcen = self.raw_dir / "COMCEN.DBF"
+            source_vepoen = self.raw_dir / "VEPOEN.DBF"
 
             templates_dir = self.output_dir / "templates"
             output_dbf_dir = self.output_dir / "dbf" / self.period
-            output_dbf_dir.mkdir(parents=True, exist_ok=True)
 
             cenhid_template = templates_dir / f"CENHID_{period_label}_template.xlsx"
             center_template = templates_dir / f"CENTER_{period_label}_template.xlsx"
             dacoce_template = templates_dir / f"DACOCE_{period_label}_template.xlsx"
             comcen_template = templates_dir / f"COMCEN_{period_label}_template.xlsx"
+            vepoen_template = templates_dir / f"VEPOEN_{period_label}_template.xlsx"
 
             for path in [
                 source_cenhid,
                 source_center,
                 source_dacoce,
                 source_comcen,
+                source_vepoen,
                 cenhid_template,
                 center_template,
                 dacoce_template,
                 comcen_template,
+                vepoen_template,
                 self.cenhid_catalog,
                 self.center_catalog,
+                self.g2_catalog,
             ]:
                 self._ensure_file(path)
 
             self.log.emit(f"Periodo: {self.period}")
             self.log.emit(f"Carpeta de plantillas: {templates_dir}")
             self.log.emit(f"Carpeta DBF exportados: {output_dbf_dir}")
+
+            self._validate_all_templates(
+                cenhid_template=cenhid_template,
+                center_template=center_template,
+                dacoce_template=dacoce_template,
+                comcen_template=comcen_template,
+                vepoen_template=vepoen_template,
+            )
+
+            output_dbf_dir.mkdir(parents=True, exist_ok=True)
 
             self.log.emit("Exportando CENHID.DBF...")
             cenhid_result = export_cenhid_dbf(
@@ -336,6 +502,19 @@ class ExportDbfWorker(QObject):
             self.log.emit(
                 f"COMCEN exportado: {comcen_result.output_path} "
                 f"({comcen_result.appended_record_count} registros nuevos)"
+            )
+
+            self.log.emit("Exportando VEPOEN.DBF...")
+            vepoen_result = export_vepoen_dbf(
+                source_dbf_path=source_vepoen,
+                template_path=vepoen_template,
+                period=self.period,
+                catalog_path=self.g2_catalog,
+                output_path=output_dbf_dir / "VEPOEN.DBF",
+            )
+            self.log.emit(
+                f"VEPOEN exportado: {vepoen_result.output_path} "
+                f"({vepoen_result.appended_record_count} registros nuevos)"
             )
 
             self.exported_dir.emit(str(output_dbf_dir))
@@ -452,7 +631,6 @@ class MainWindow(QMainWindow):
         self.output_dir_input = QLineEdit(str(Path("reports")))
         self.cenhid_catalog_input = QLineEdit(str(Path("config/local/cenhid_units.yaml")))
         self.center_catalog_input = QLineEdit(str(Path("config/local/center_units.yaml")))
-        self.vepoen_input = QLineEdit(str(Path("data/raw/VEPOEN.DBF")))
         self.g2_catalog_input = QLineEdit(str(Path("config/local/g2_distributors.yaml")))
 
         self.validate_g1_button = QPushButton("Validar fuentes G1")
@@ -490,8 +668,8 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self._build_config_tab(), "Configuración")
         self.tabs.addTab(self._build_templates_tab(), "Plantillas")
         self.tabs.addTab(self._build_export_tab(), "Exportar DBF")
-        self.tabs.addTab(self._build_g1_tab(), "Generar G1")
-        self.tabs.addTab(self._build_g2_tab(), "Generar G2")
+        self.tabs.addTab(self._build_g1_tab(), "Reporte G1")
+        self.tabs.addTab(self._build_g2_tab(), "Reporte G2")
         self.tabs.addTab(self._build_logs_tab(), "Logs")
 
         self.setCentralWidget(root)
@@ -504,8 +682,14 @@ class MainWindow(QMainWindow):
         form = QFormLayout(config_group)
 
         form.addRow("Periodo YYYY-MM:", self.period_input)
-        form.addRow("Carpeta DBF base SISGEN:", self._path_row(self.raw_dir_input, self._select_raw_dir))
-        form.addRow("Carpeta de salida:", self._path_row(self.output_dir_input, self._select_output_dir))
+        form.addRow(
+            "Carpeta DBF base SISGEN:",
+            self._path_row(self.raw_dir_input, self._select_raw_dir),
+        )
+        form.addRow(
+            "Carpeta de salida:",
+            self._path_row(self.output_dir_input, self._select_output_dir),
+        )
         form.addRow(
             "Catálogo CENHID:",
             self._path_row(self.cenhid_catalog_input, self._select_cenhid_catalog),
@@ -514,11 +698,15 @@ class MainWindow(QMainWindow):
             "Catálogo CENTER:",
             self._path_row(self.center_catalog_input, self._select_center_catalog),
         )
+        form.addRow(
+            "Catálogo G2:",
+            self._path_row(self.g2_catalog_input, self._select_g2_catalog),
+        )
 
         help_box = QLabel(
-            "Esta configuración se usa en las pestañas de generación. "
-            "Para G1 se esperan CENHID.DBF, CENTER.DBF, DACOCE.DBF y COMCEN.DBF. "
-            "G2 usa VEPOEN.DBF como fuente independiente."
+            "El periodo configurado se usa para generar plantillas, exportar DBF y crear reportes. "
+            "La carpeta DBF base debe contener CENHID.DBF, CENTER.DBF, DACOCE.DBF, COMCEN.DBF y VEPOEN.DBF. "
+            "Para VEPOEN, la plantilla toma automáticamente el último periodo válido del DBF base."
         )
         help_box.setWordWrap(True)
         help_box.setStyleSheet("color: #555;")
@@ -537,7 +725,7 @@ class MainWindow(QMainWindow):
         title.setStyleSheet("font-size: 18px; font-weight: bold;")
 
         message = QLabel(
-            "Genera las plantillas Excel de CENHID, CENTER, DACOCE y COMCEN usando el periodo "
+            "Genera las plantillas Excel de CENHID, CENTER, DACOCE, COMCEN y VEPOEN usando el periodo "
             "y los catálogos configurados. Las plantillas se guardan en la carpeta de salida."
         )
         message.setWordWrap(True)
@@ -548,8 +736,8 @@ class MainWindow(QMainWindow):
         actions_layout.addStretch()
 
         note = QLabel(
-            "DACOCE se genera desde los catálogos CENHID y CENTER para evitar copiar "
-            "centrales incorrectas desde históricos antiguos."
+            "DACOCE se genera desde los catálogos CENHID y CENTER. "
+            "VEPOEN se genera desde el VEPOEN.DBF base usando automáticamente el último periodo válido."
         )
         note.setWordWrap(True)
         note.setStyleSheet("color: #555;")
@@ -571,7 +759,7 @@ class MainWindow(QMainWindow):
 
         message = QLabel(
             "Valida las plantillas Excel llenas y genera nuevos archivos CENHID.DBF, "
-            "CENTER.DBF, DACOCE.DBF y COMCEN.DBF para el periodo configurado."
+            "CENTER.DBF, DACOCE.DBF, COMCEN.DBF y VEPOEN.DBF para el periodo configurado."
         )
         message.setWordWrap(True)
 
@@ -633,23 +821,13 @@ class MainWindow(QMainWindow):
         tab = QWidget()
         layout = QVBoxLayout(tab)
 
-        title = QLabel("Formato G2")
+        title = QLabel("Reporte G2")
         title.setStyleSheet("font-size: 18px; font-weight: bold;")
 
-        description = QLabel("Valida VEPOEN.DBF y genera el TXT del Formato G2.")
+        description = QLabel(
+            "Valida VEPOEN.DBF desde la carpeta DBF configurada y genera el TXT del Formato G2."
+        )
         description.setWordWrap(True)
-
-        config_group = QGroupBox("Fuentes G2")
-        form = QFormLayout(config_group)
-
-        form.addRow(
-            "VEPOEN.DBF:",
-            self._path_row(self.vepoen_input, self._select_vepoen_file),
-        )
-        form.addRow(
-            "Catálogo G2:",
-            self._path_row(self.g2_catalog_input, self._select_g2_catalog),
-        )
 
         actions_group = QGroupBox("Acciones")
         actions_layout = QHBoxLayout(actions_group)
@@ -658,15 +836,14 @@ class MainWindow(QMainWindow):
         actions_layout.addStretch()
 
         note = QLabel(
-            "G2 se genera directamente desde VEPOEN.DBF. "
-            "El catálogo G2 traduce CCODDIS a nombres visibles de distribuidoras."
+            "Para crear VEPOEN.DBF mensual, usa primero Plantillas y Exportar DBF. "
+            "Después la carpeta DBF se actualiza automáticamente y este reporte usa el VEPOEN exportado."
         )
         note.setWordWrap(True)
         note.setStyleSheet("color: #555;")
 
         layout.addWidget(title)
         layout.addWidget(description)
-        layout.addWidget(config_group)
         layout.addWidget(actions_group)
         layout.addWidget(note)
         layout.addStretch()
@@ -702,7 +879,8 @@ class MainWindow(QMainWindow):
     def _handle_exported_dbf_dir(self, path: str) -> None:
         self.raw_dir_input.setText(path)
         self._append_log(f"Carpeta DBF actualizada automáticamente: {path}")
-        self._append_log("Ahora puedes generar G1 usando los DBF exportados.")
+        self._append_log("Ahora puedes generar G1 y G2 usando los DBF exportados.")
+
 
     def _connect_events(self) -> None:
         self.validate_g1_button.clicked.connect(lambda: self._start_worker("validate"))
@@ -725,8 +903,6 @@ class MainWindow(QMainWindow):
     def _select_center_catalog(self) -> None:
         self._select_file(self.center_catalog_input, "YAML (*.yaml *.yml)")
 
-    def _select_vepoen_file(self) -> None:
-        self._select_file(self.vepoen_input, "DBF (*.DBF *.dbf)")
 
     def _select_g2_catalog(self) -> None:
         self._select_file(self.g2_catalog_input, "YAML (*.yaml *.yml)")
@@ -763,6 +939,7 @@ class MainWindow(QMainWindow):
             output_dir=Path(self.output_dir_input.text().strip()),
             cenhid_catalog=Path(self.cenhid_catalog_input.text().strip()),
             center_catalog=Path(self.center_catalog_input.text().strip()),
+            g2_catalog=Path(self.g2_catalog_input.text().strip()),
         )
 
         self.worker.moveToThread(self.worker_thread)
@@ -794,6 +971,7 @@ class MainWindow(QMainWindow):
             output_dir=Path(self.output_dir_input.text().strip()),
             cenhid_catalog=Path(self.cenhid_catalog_input.text().strip()),
             center_catalog=Path(self.center_catalog_input.text().strip()),
+            g2_catalog=Path(self.g2_catalog_input.text().strip()),
         )
 
         self.worker.moveToThread(self.worker_thread)
@@ -855,7 +1033,7 @@ class MainWindow(QMainWindow):
         self.worker = G2Worker(
             action=action,
             period=self.period_input.text().strip(),
-            vepoen_path=Path(self.vepoen_input.text().strip()),
+            vepoen_path=Path(self.raw_dir_input.text().strip()) / "VEPOEN.DBF",
             output_dir=Path(self.output_dir_input.text().strip()),
             g2_catalog=Path(self.g2_catalog_input.text().strip()),
         )

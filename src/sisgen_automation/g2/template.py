@@ -42,7 +42,6 @@ EDITABLE_HEADERS = {
     "NPRENFU",
     "NENVEHO",
     "NENVEFU",
-    "NENVETO",
     "NPOCOHO",
     "NPOCOFU",
     "NMADEHO",
@@ -50,6 +49,8 @@ EDITABLE_HEADERS = {
     "NFACPOT",
     "NFACENE",
 }
+
+CALCULATED_HEADERS = {"NENVETO"}
 
 NUMERIC_HEADERS = {
     "NTENBAR",
@@ -136,6 +137,13 @@ def _read_vepoen_rows(source_dbf_path: Path) -> list[dict[str, object]]:
 
     return rows
 
+def _full_year_from_sisgen_short_year(year_text: str) -> int:
+    year_short = int(year_text)
+
+    if year_short >= 90:
+        return 1900 + year_short
+
+    return 2000 + year_short
 
 def _latest_period(rows: list[dict[str, object]]) -> str:
     periods: set[tuple[int, int]] = set()
@@ -152,7 +160,7 @@ def _latest_period(rows: list[dict[str, object]]) -> str:
         if not 1 <= month_int <= 12:
             continue
 
-        periods.add((2000 + int(year), month_int))
+        periods.add((_full_year_from_sisgen_short_year(year), month_int))
 
     if not periods:
         raise ValueError("No se encontraron periodos válidos en VEPOEN.DBF.")
@@ -241,6 +249,10 @@ def create_vepoen_template(
                 values[header] = year_short
             elif header == "CMESREG":
                 values[header] = month
+            elif header in EDITABLE_HEADERS:
+                values[header] = None
+            elif header in CALCULATED_HEADERS:
+                values[header] = f"=M{row_index}+N{row_index}"
             elif header in NUMERIC_HEADERS:
                 values[header] = _parse_decimal(value)
             else:
@@ -248,7 +260,6 @@ def create_vepoen_template(
 
         for col_index, header in enumerate(VEPOEN_HEADERS, start=1):
             cell = sheet.cell(row=row_index, column=col_index, value=values[header])
-            cell.border = border
 
             if header in EDITABLE_HEADERS:
                 cell.fill = editable_fill
@@ -295,6 +306,7 @@ def create_vepoen_template(
 
     sheet.freeze_panes = "A2"
     sheet.auto_filter.ref = f"A1:U{header_row + len(base_rows)}"
+    sheet.sheet_view.showGridLines = False
     sheet.protection.sheet = True
     sheet.protection.enable()
 
