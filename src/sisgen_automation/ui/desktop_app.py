@@ -22,18 +22,19 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from sisgen_automation.cenhid.export_dbf import export_cenhid_dbf
+from sisgen_automation.cenhid.template import create_cenhid_template
+from sisgen_automation.center.export_dbf import export_center_dbf
+from sisgen_automation.center.template import create_center_template
+from sisgen_automation.comcen.export_dbf import export_comcen_dbf
+from sisgen_automation.comcen.template import create_comcen_template
+from sisgen_automation.dacoce.export_dbf import export_dacoce_dbf
+from sisgen_automation.dacoce.template import create_dacoce_template
 from sisgen_automation.g1.sources import validate_g1_sources
 from sisgen_automation.g1.txt import create_g1_txt
+from sisgen_automation.g2.sources import validate_g2_sources
+from sisgen_automation.g2.txt import create_g2_txt
 
-from sisgen_automation.cenhid.template import create_cenhid_template
-from sisgen_automation.center.template import create_center_template
-from sisgen_automation.dacoce.template import create_dacoce_template
-from sisgen_automation.comcen.template import create_comcen_template
-
-from sisgen_automation.cenhid.export_dbf import export_cenhid_dbf
-from sisgen_automation.center.export_dbf import export_center_dbf
-from sisgen_automation.dacoce.export_dbf import export_dacoce_dbf
-from sisgen_automation.comcen.export_dbf import export_comcen_dbf
 
 class G1Worker(QObject):
     finished = Signal(str)
@@ -118,8 +119,9 @@ class G1Worker(QObject):
                 self.finished.emit("Validación G1 completada.")
                 return
 
-            self.output_dir.mkdir(parents=True, exist_ok=True)
-            output_path = self.output_dir / f"G1_{self.period.replace('-', '_')}.txt"
+            g1_dir = self.output_dir / "g1"
+            g1_dir.mkdir(parents=True, exist_ok=True)
+            output_path = g1_dir / f"G1_{self.period.replace('-', '_')}.txt"
 
             self.log.emit("Generando TXT G1...")
 
@@ -143,6 +145,7 @@ class G1Worker(QObject):
     def _ensure_file(path: Path) -> None:
         if not path.exists():
             raise FileNotFoundError(f"No existe el archivo requerido: {path}")
+
 
 class TemplateWorker(QObject):
     finished = Signal(str)
@@ -224,7 +227,8 @@ class TemplateWorker(QObject):
     def _ensure_file(path: Path) -> None:
         if not path.exists():
             raise FileNotFoundError(f"No existe el archivo requerido: {path}")
-        
+
+
 class ExportDbfWorker(QObject):
     finished = Signal(str)
     failed = Signal(str)
@@ -270,10 +274,10 @@ class ExportDbfWorker(QObject):
                 source_center,
                 source_dacoce,
                 source_comcen,
-                comcen_template,
                 cenhid_template,
                 center_template,
                 dacoce_template,
+                comcen_template,
                 self.cenhid_catalog,
                 self.center_catalog,
             ]:
@@ -320,6 +324,7 @@ class ExportDbfWorker(QObject):
                 f"DACOCE exportado: {dacoce_result.output_path} "
                 f"({dacoce_result.appended_record_count} registros nuevos)"
             )
+
             self.log.emit("Exportando COMCEN.DBF...")
             comcen_result = export_comcen_dbf(
                 source_dbf_path=source_comcen,
@@ -345,12 +350,99 @@ class ExportDbfWorker(QObject):
         if not path.exists():
             raise FileNotFoundError(f"No existe el archivo requerido: {path}")
 
+
+class G2Worker(QObject):
+    finished = Signal(str)
+    failed = Signal(str)
+    log = Signal(str)
+
+    def __init__(
+        self,
+        *,
+        action: str,
+        period: str,
+        vepoen_path: Path,
+        output_dir: Path,
+        g2_catalog: Path,
+    ) -> None:
+        super().__init__()
+        self.action = action
+        self.period = period
+        self.vepoen_path = vepoen_path
+        self.output_dir = output_dir
+        self.g2_catalog = g2_catalog
+
+    def run(self) -> None:
+        try:
+            self._ensure_file(self.vepoen_path)
+            self._ensure_file(self.g2_catalog)
+
+            self.log.emit(f"Periodo: {self.period}")
+            self.log.emit(f"VEPOEN: {self.vepoen_path}")
+            self.log.emit(f"Catálogo G2: {self.g2_catalog}")
+            self.log.emit("Validando fuentes G2...")
+
+            validation = validate_g2_sources(
+                vepoen_path=self.vepoen_path,
+                catalog_path=self.g2_catalog,
+                period=self.period,
+            )
+
+            self.log.emit(f"Registros VEPOEN: {len(validation.rows)}")
+            self.log.emit(f"Errores: {len(validation.errors)}")
+            self.log.emit(f"Advertencias: {len(validation.warnings)}")
+
+            if validation.has_errors:
+                for issue in validation.errors[:20]:
+                    self.log.emit(
+                        f"ERROR | {issue.source} | {issue.field or ''} | "
+                        f"{issue.message} | {issue.value or ''}"
+                    )
+
+                raise ValueError(
+                    "Las fuentes G2 tienen errores. Revisa los logs antes de generar G2."
+                )
+
+            for issue in validation.warnings[:20]:
+                self.log.emit(
+                    f"WARNING | {issue.source} | {issue.field or ''} | "
+                    f"{issue.message} | {issue.value or ''}"
+                )
+
+            if self.action == "validate":
+                self.finished.emit("Validación G2 completada.")
+                return
+
+            g2_dir = self.output_dir / "g2"
+            g2_dir.mkdir(parents=True, exist_ok=True)
+            output_path = g2_dir / f"G2_{self.period.replace('-', '_')}.txt"
+
+            self.log.emit("Generando TXT G2...")
+
+            result = create_g2_txt(
+                vepoen_path=self.vepoen_path,
+                period=self.period,
+                catalog_path=self.g2_catalog,
+                output_path=output_path,
+            )
+
+            self.finished.emit(f"TXT G2 generado correctamente: {result.output_path}")
+        except Exception as error:  # noqa: BLE001
+            details = traceback.format_exc()
+            self.failed.emit(f"{error}\n\nDetalle técnico:\n{details}")
+
+    @staticmethod
+    def _ensure_file(path: Path) -> None:
+        if not path.exists():
+            raise FileNotFoundError(f"No existe el archivo requerido: {path}")
+
+
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
 
         self.worker_thread: QThread | None = None
-        self.worker: G1Worker | TemplateWorker | ExportDbfWorker | None = None
+        self.worker: G1Worker | TemplateWorker | ExportDbfWorker | G2Worker | None = None
 
         self.setWindowTitle("SISGEN Format Automation")
         self.resize(1100, 760)
@@ -360,9 +452,13 @@ class MainWindow(QMainWindow):
         self.output_dir_input = QLineEdit(str(Path("reports")))
         self.cenhid_catalog_input = QLineEdit(str(Path("config/local/cenhid_units.yaml")))
         self.center_catalog_input = QLineEdit(str(Path("config/local/center_units.yaml")))
+        self.vepoen_input = QLineEdit(str(Path("data/raw/VEPOEN.DBF")))
+        self.g2_catalog_input = QLineEdit(str(Path("config/local/g2_distributors.yaml")))
 
         self.validate_g1_button = QPushButton("Validar fuentes G1")
         self.generate_g1_button = QPushButton("Generar TXT G1")
+        self.validate_g2_button = QPushButton("Validar fuentes G2")
+        self.generate_g2_button = QPushButton("Generar TXT G2")
         self.generate_templates_button = QPushButton("Generar plantillas mensuales")
         self.export_dbf_button = QPushButton("Exportar DBF mensuales")
         self.clear_log_button = QPushButton("Limpiar logs")
@@ -383,7 +479,7 @@ class MainWindow(QMainWindow):
         title.setStyleSheet("font-size: 22px; font-weight: bold;")
 
         subtitle = QLabel(
-            "Herramienta desktop para preparar DBF mensuales y generar el Formato G1."
+            "Herramienta desktop para preparar DBF mensuales y generar formatos SISGEN."
         )
         subtitle.setStyleSheet("color: #555;")
 
@@ -395,6 +491,7 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self._build_templates_tab(), "Plantillas")
         self.tabs.addTab(self._build_export_tab(), "Exportar DBF")
         self.tabs.addTab(self._build_g1_tab(), "Generar G1")
+        self.tabs.addTab(self._build_g2_tab(), "Generar G2")
         self.tabs.addTab(self._build_logs_tab(), "Logs")
 
         self.setCentralWidget(root)
@@ -420,7 +517,8 @@ class MainWindow(QMainWindow):
 
         help_box = QLabel(
             "Esta configuración se usa en las pestañas de generación. "
-            "Los archivos esperados son CENHID.DBF, CENTER.DBF, DACOCE.DBF y COMCEN.DBF con la estructura que el emulador reconoce correctamente."
+            "Para G1 se esperan CENHID.DBF, CENTER.DBF, DACOCE.DBF y COMCEN.DBF. "
+            "G2 usa VEPOEN.DBF como fuente independiente."
         )
         help_box.setWordWrap(True)
         help_box.setStyleSheet("color: #555;")
@@ -531,6 +629,50 @@ class MainWindow(QMainWindow):
 
         return tab
 
+    def _build_g2_tab(self) -> QWidget:
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+
+        title = QLabel("Formato G2")
+        title.setStyleSheet("font-size: 18px; font-weight: bold;")
+
+        description = QLabel("Valida VEPOEN.DBF y genera el TXT del Formato G2.")
+        description.setWordWrap(True)
+
+        config_group = QGroupBox("Fuentes G2")
+        form = QFormLayout(config_group)
+
+        form.addRow(
+            "VEPOEN.DBF:",
+            self._path_row(self.vepoen_input, self._select_vepoen_file),
+        )
+        form.addRow(
+            "Catálogo G2:",
+            self._path_row(self.g2_catalog_input, self._select_g2_catalog),
+        )
+
+        actions_group = QGroupBox("Acciones")
+        actions_layout = QHBoxLayout(actions_group)
+        actions_layout.addWidget(self.validate_g2_button)
+        actions_layout.addWidget(self.generate_g2_button)
+        actions_layout.addStretch()
+
+        note = QLabel(
+            "G2 se genera directamente desde VEPOEN.DBF. "
+            "El catálogo G2 traduce CCODDIS a nombres visibles de distribuidoras."
+        )
+        note.setWordWrap(True)
+        note.setStyleSheet("color: #555;")
+
+        layout.addWidget(title)
+        layout.addWidget(description)
+        layout.addWidget(config_group)
+        layout.addWidget(actions_group)
+        layout.addWidget(note)
+        layout.addStretch()
+
+        return tab
+
     def _build_logs_tab(self) -> QWidget:
         tab = QWidget()
         layout = QVBoxLayout(tab)
@@ -556,7 +698,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(button)
 
         return container
-    
+
     def _handle_exported_dbf_dir(self, path: str) -> None:
         self.raw_dir_input.setText(path)
         self._append_log(f"Carpeta DBF actualizada automáticamente: {path}")
@@ -565,6 +707,8 @@ class MainWindow(QMainWindow):
     def _connect_events(self) -> None:
         self.validate_g1_button.clicked.connect(lambda: self._start_worker("validate"))
         self.generate_g1_button.clicked.connect(lambda: self._start_worker("generate"))
+        self.validate_g2_button.clicked.connect(lambda: self._start_g2_worker("validate"))
+        self.generate_g2_button.clicked.connect(lambda: self._start_g2_worker("generate"))
         self.generate_templates_button.clicked.connect(self._start_template_worker)
         self.export_dbf_button.clicked.connect(self._start_export_dbf_worker)
         self.clear_log_button.clicked.connect(self.log_output.clear)
@@ -581,6 +725,12 @@ class MainWindow(QMainWindow):
     def _select_center_catalog(self) -> None:
         self._select_file(self.center_catalog_input, "YAML (*.yaml *.yml)")
 
+    def _select_vepoen_file(self) -> None:
+        self._select_file(self.vepoen_input, "DBF (*.DBF *.dbf)")
+
+    def _select_g2_catalog(self) -> None:
+        self._select_file(self.g2_catalog_input, "YAML (*.yaml *.yml)")
+
     def _select_directory(self, target: QLineEdit) -> None:
         selected = QFileDialog.getExistingDirectory(self, "Seleccionar carpeta")
 
@@ -593,12 +743,15 @@ class MainWindow(QMainWindow):
         if selected:
             target.setText(selected)
 
+    def _show_logs_tab(self) -> None:
+        self.tabs.setCurrentIndex(self.tabs.count() - 1)
+
     def _start_template_worker(self) -> None:
         if self.worker_thread is not None:
             QMessageBox.warning(self, "Proceso en ejecución", "Ya hay un proceso ejecutándose.")
             return
 
-        self.tabs.setCurrentWidget(self.tabs.widget(4))
+        self._show_logs_tab()
         self._set_buttons_enabled(False)
         self._append_log("=" * 80)
         self._append_log("Iniciando generación de plantillas...")
@@ -629,7 +782,7 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Proceso en ejecución", "Ya hay un proceso ejecutándose.")
             return
 
-        self.tabs.setCurrentWidget(self.tabs.widget(4))
+        self._show_logs_tab()
         self._set_buttons_enabled(False)
         self._append_log("=" * 80)
         self._append_log("Iniciando exportación de DBF...")
@@ -661,10 +814,10 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Proceso en ejecución", "Ya hay un proceso ejecutándose.")
             return
 
-        self.tabs.setCurrentWidget(self.tabs.widget(4))
+        self._show_logs_tab()
         self._set_buttons_enabled(False)
         self._append_log("=" * 80)
-        self._append_log("Iniciando proceso...")
+        self._append_log("Iniciando proceso G1...")
 
         self.worker_thread = QThread()
         self.worker = G1Worker(
@@ -674,6 +827,37 @@ class MainWindow(QMainWindow):
             output_dir=Path(self.output_dir_input.text().strip()),
             cenhid_catalog=Path(self.cenhid_catalog_input.text().strip()),
             center_catalog=Path(self.center_catalog_input.text().strip()),
+        )
+
+        self.worker.moveToThread(self.worker_thread)
+
+        self.worker_thread.started.connect(self.worker.run)
+        self.worker.log.connect(self._append_log)
+        self.worker.finished.connect(self._handle_success)
+        self.worker.failed.connect(self._handle_failure)
+        self.worker.finished.connect(self.worker_thread.quit)
+        self.worker.failed.connect(self.worker_thread.quit)
+        self.worker_thread.finished.connect(self._cleanup_worker)
+
+        self.worker_thread.start()
+
+    def _start_g2_worker(self, action: str) -> None:
+        if self.worker_thread is not None:
+            QMessageBox.warning(self, "Proceso en ejecución", "Ya hay un proceso ejecutándose.")
+            return
+
+        self._show_logs_tab()
+        self._set_buttons_enabled(False)
+        self._append_log("=" * 80)
+        self._append_log("Iniciando proceso G2...")
+
+        self.worker_thread = QThread()
+        self.worker = G2Worker(
+            action=action,
+            period=self.period_input.text().strip(),
+            vepoen_path=Path(self.vepoen_input.text().strip()),
+            output_dir=Path(self.output_dir_input.text().strip()),
+            g2_catalog=Path(self.g2_catalog_input.text().strip()),
         )
 
         self.worker.moveToThread(self.worker_thread)
@@ -707,10 +891,17 @@ class MainWindow(QMainWindow):
         self.export_dbf_button.setEnabled(enabled)
         self.validate_g1_button.setEnabled(enabled)
         self.generate_g1_button.setEnabled(enabled)
+        self.validate_g2_button.setEnabled(enabled)
+        self.generate_g2_button.setEnabled(enabled)
         self.clear_log_button.setEnabled(enabled)
 
     def _append_log(self, message: str) -> None:
         self.log_output.append(message)
+
+
+# ----------------------------------------------------------------------------
+# Public entry point
+# ----------------------------------------------------------------------------
 
 
 def run_desktop_app() -> None:
