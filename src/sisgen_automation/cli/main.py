@@ -6,6 +6,7 @@ from typing import Optional
 import typer
 from rich.console import Console
 from rich.table import Table
+from sisgen_automation.cli.g7 import register_g7_commands
 
 from sisgen_automation.dbf.profile import DbfProfile, read_dbf_profile, write_profile_markdown
 
@@ -114,6 +115,7 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 console = Console()
+register_g7_commands(app, console)
 @app.callback()
 def cli() -> None:
     """CLI principal para automatizar formatos SISGEN."""
