@@ -48,3 +48,4 @@ desktop.ini
 # Configuración local real
 config/local/*
 !config/local/.gitkeep
+dist-nuitka/
