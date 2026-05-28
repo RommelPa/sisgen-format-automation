@@ -37,7 +37,7 @@ class MainWindow(QMainWindow):
         ) = None
 
         self.setWindowTitle("SISGEN Format Automation")
-        self.resize(1100, 760)
+        self.resize(1180, 800)
 
         self.period_input = QLineEdit("2025-12")
         self.raw_dir_input = QLineEdit(str(Path("data/raw")))
@@ -62,11 +62,156 @@ class MainWindow(QMainWindow):
 
         self.log_output = QTextEdit()
         self.log_output.setReadOnly(True)
+        self.log_output.setMinimumHeight(320)
 
         self.tabs = QTabWidget()
+        self.tabs.setDocumentMode(True)
 
         self._build_ui()
         self._connect_events()
+        self._apply_visual_style()
+
+    def _apply_visual_style(self) -> None:
+        primary_buttons = [
+            self.generate_templates_button,
+            self.export_dbf_button,
+            self.generate_g1_button,
+            self.generate_g2_button,
+            self.generate_g7_button,
+            self.generate_g11_button,
+        ]
+        secondary_buttons = [
+            self.validate_g1_button,
+            self.validate_g2_button,
+            self.validate_g7_button,
+            self.validate_g11_button,
+        ]
+
+        for button in primary_buttons:
+            button.setProperty("buttonRole", "primary")
+            button.setMinimumHeight(34)
+
+        for button in secondary_buttons:
+            button.setProperty("buttonRole", "secondary")
+            button.setMinimumHeight(34)
+
+        self.clear_log_button.setProperty("buttonRole", "muted")
+        self.clear_log_button.setMinimumHeight(32)
+
+        self.setStyleSheet("""
+            QMainWindow {
+                background-color: #f6f7fb;
+            }
+
+            QLabel {
+                font-size: 13px;
+            }
+
+            QLineEdit {
+                min-height: 28px;
+                padding: 4px 8px;
+                border: 1px solid #cfd6e4;
+                border-radius: 6px;
+                background: #ffffff;
+            }
+
+            QLineEdit:focus {
+                border: 1px solid #2f6fed;
+            }
+
+            QTabWidget::pane {
+                border: 1px solid #d9deea;
+                border-radius: 8px;
+                background: #ffffff;
+                top: -1px;
+            }
+
+            QTabBar::tab {
+                padding: 8px 14px;
+                margin-right: 2px;
+                border: 1px solid #d9deea;
+                border-bottom: none;
+                border-top-left-radius: 6px;
+                border-top-right-radius: 6px;
+                background: #eef1f7;
+            }
+
+            QTabBar::tab:selected {
+                background: #ffffff;
+                font-weight: 600;
+            }
+
+            QGroupBox {
+                margin-top: 12px;
+                padding: 12px;
+                border: 1px solid #d9deea;
+                border-radius: 8px;
+                background-color: #ffffff;
+                font-weight: 600;
+            }
+
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 6px;
+            }
+
+            QPushButton {
+                padding: 7px 14px;
+                border-radius: 6px;
+                border: 1px solid #b8c1d1;
+                background: #ffffff;
+            }
+
+            QPushButton:hover {
+                background: #f0f3f9;
+            }
+
+            QPushButton:disabled {
+                color: #9aa4b2;
+                background: #edf0f5;
+                border-color: #d5dbe6;
+            }
+
+            QPushButton[buttonRole="primary"] {
+                color: #ffffff;
+                background: #1f6feb;
+                border: 1px solid #1f6feb;
+                font-weight: 600;
+            }
+
+            QPushButton[buttonRole="primary"]:hover {
+                background: #195dc7;
+            }
+
+            QPushButton[buttonRole="secondary"] {
+                color: #17324d;
+                background: #eef5ff;
+                border: 1px solid #9fc2f3;
+                font-weight: 600;
+            }
+
+            QPushButton[buttonRole="secondary"]:hover {
+                background: #deecff;
+            }
+
+            QPushButton[buttonRole="muted"] {
+                color: #334155;
+                background: #f8fafc;
+                border: 1px solid #cbd5e1;
+            }
+
+            QTextEdit {
+                border: 1px solid #d9deea;
+                border-radius: 8px;
+                background: #0f172a;
+                color: #e2e8f0;
+                font-family: Consolas, "Courier New", monospace;
+                font-size: 12px;
+                padding: 8px;
+            }
+        """)
+
 
     def _build_ui(self) -> None:
         root = QWidget()
@@ -84,13 +229,13 @@ class MainWindow(QMainWindow):
         root_layout.addWidget(subtitle)
         root_layout.addWidget(self.tabs)
 
-        self.tabs.addTab(self._build_config_tab(), "Configuración")
-        self.tabs.addTab(self._build_templates_tab(), "Plantillas")
-        self.tabs.addTab(self._build_export_tab(), "Exportar DBF")
-        self.tabs.addTab(self._build_g1_tab(), "Reporte G1")
-        self.tabs.addTab(self._build_g2_tab(), "Reporte G2")
-        self.tabs.addTab(self._build_g7_tab(), "Reporte G7")
-        self.tabs.addTab(self._build_g11_tab(), "Reporte G11")
+        self.tabs.addTab(self._build_config_tab(), "1. Configuración")
+        self.tabs.addTab(self._build_templates_tab(), "2. Plantillas")
+        self.tabs.addTab(self._build_export_tab(), "3. Exportar DBF")
+        self.tabs.addTab(self._build_g1_tab(), "4. G1")
+        self.tabs.addTab(self._build_g2_tab(), "5. G2")
+        self.tabs.addTab(self._build_g7_tab(), "6. G7")
+        self.tabs.addTab(self._build_g11_tab(), "7. G11")
         self.tabs.addTab(self._build_logs_tab(), "Logs")
 
         self.setCentralWidget(root)
@@ -133,10 +278,9 @@ class MainWindow(QMainWindow):
         )
 
         help_box = QLabel(
-            "El periodo configurado se usa para generar plantillas, exportar DBF y crear reportes. "
-            "La carpeta DBF base debe contener CENHID.DBF, CENTER.DBF, DACOCE.DBF, COMCEN.DBF, VEPOEN.DBF, "
-            "CACEHI.DBF, CACETE.DBF, COMENE.DBF, VENENE.DBF, COMNET.DBF, TRAENE.DBF y VALENE.DBF. "
-            "Para VEPOEN, la plantilla toma automáticamente el último periodo válido del DBF base."
+            "Configura el periodo, las rutas base y los catálogos locales. "
+            "Usa data/raw para crear plantillas y exportar DBF. "
+            "Luego usa reports/dbf/YYYY-MM para generar los TXT."
         )
         help_box.setWordWrap(True)
         help_box.setStyleSheet("color: #555;")
@@ -155,9 +299,8 @@ class MainWindow(QMainWindow):
         title.setStyleSheet("font-size: 18px; font-weight: bold;")
 
         message = QLabel(
-            "Genera las plantillas Excel de CENHID, CENTER, DACOCE, COMCEN, VEPOEN, CACEHI, CACETE, "
-            "COMENE, VENENE, COMNET, TRAENE y VALENE usando el periodo y los catálogos configurados. "
-            "Las plantillas se guardan en la carpeta de salida."
+            "Genera todas las plantillas Excel del periodo configurado. "
+            "Después completa manualmente los campos editables en Excel."
         )
         message.setWordWrap(True)
 
@@ -167,9 +310,8 @@ class MainWindow(QMainWindow):
         actions_layout.addStretch()
 
         note = QLabel(
-            "DACOCE se genera desde los catálogos CENHID y CENTER. "
-            "VEPOEN se genera desde el VEPOEN.DBF base usando automáticamente el último periodo válido. "
-            "CACEHI y CACETE se generan desde el catálogo G11. Los archivos G7 se generan desde el catálogo G7."
+            "Salida: reports/templates. "
+            "VEPOEN toma automáticamente el último periodo válido del DBF base."
         )
         note.setWordWrap(True)
         note.setStyleSheet("color: #555;")
@@ -190,8 +332,7 @@ class MainWindow(QMainWindow):
         title.setStyleSheet("font-size: 18px; font-weight: bold;")
 
         message = QLabel(
-            "Valida las plantillas Excel llenas y genera nuevos archivos CENHID.DBF, "
-            "CENTER.DBF, DACOCE.DBF, COMCEN.DBF, VEPOEN.DBF, CACEHI.DBF y CACETE.DBF para el periodo configurado."
+            "Valida las plantillas Excel completadas y exporta los DBF mensuales del periodo."
         )
         message.setWordWrap(True)
 
@@ -201,8 +342,8 @@ class MainWindow(QMainWindow):
         actions_layout.addStretch()
 
         note = QLabel(
-            "Las plantillas deben existir en la carpeta de salida, dentro de la subcarpeta "
-            "'templates'. Los DBF exportados se guardarán en 'dbf/YYYY-MM'."
+            "Entrada: reports/templates. Salida: reports/dbf/YYYY-MM. "
+            "Si una plantilla tiene errores, no se exporta ningún DBF."
         )
         note.setWordWrap(True)
         note.setStyleSheet("color: #555;")
@@ -380,7 +521,7 @@ class MainWindow(QMainWindow):
     def _handle_exported_dbf_dir(self, path: str) -> None:
         self.raw_dir_input.setText(path)
         self._append_log(f"Carpeta DBF actualizada automáticamente: {path}")
-        self._append_log("Ahora puedes generar G1 y G2 usando los DBF exportados.")
+        self._append_log("Ahora puedes generar G1, G2, G7 y G11 usando los DBF exportados.")
 
 
     def _connect_events(self) -> None:
