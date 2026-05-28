@@ -32,6 +32,9 @@ desktop = [
 ]
 packaging = [
     "pyinstaller>=6.0",
+    "nuitka>=4.1.2",
+    "ordered-set>=4.1.0",
+    "zstandard>=0.25.0",
 ]
 
 [project.scripts]
