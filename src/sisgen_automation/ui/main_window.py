@@ -485,6 +485,7 @@ class MainWindow(QMainWindow):
             cenhid_catalog=Path(self.cenhid_catalog_input.text().strip()),
             center_catalog=Path(self.center_catalog_input.text().strip()),
             g2_catalog=Path(self.g2_catalog_input.text().strip()),
+            g7_catalog=Path(self.g7_catalog_input.text().strip()),
             g11_catalog=Path(self.g11_catalog_input.text().strip()),
         )
 

@@ -15,10 +15,20 @@ from sisgen_automation.center.export_dbf import export_center_dbf
 from sisgen_automation.center.template_validation import validate_center_template
 from sisgen_automation.comcen.export_dbf import export_comcen_dbf
 from sisgen_automation.comcen.template_validation import validate_comcen_template
+from sisgen_automation.comene.export_dbf import export_comene_dbf
+from sisgen_automation.comene.template_validation import validate_comene_template
+from sisgen_automation.comnet.export_dbf import export_comnet_dbf
+from sisgen_automation.comnet.template_validation import validate_comnet_template
 from sisgen_automation.dacoce.export_dbf import export_dacoce_dbf
 from sisgen_automation.dacoce.template_validation import validate_dacoce_template
 from sisgen_automation.g2.export_dbf import export_vepoen_dbf
 from sisgen_automation.g2.template_validation import validate_vepoen_template
+from sisgen_automation.traene.export_dbf import export_traene_dbf
+from sisgen_automation.traene.template_validation import validate_traene_template
+from sisgen_automation.valene.export_dbf import export_valene_dbf
+from sisgen_automation.valene.template_validation import validate_valene_template
+from sisgen_automation.venene.export_dbf import export_venene_dbf
+from sisgen_automation.venene.template_validation import validate_venene_template
 from sisgen_automation.ui.workers.base import WorkerFileMixin
 
 
@@ -37,6 +47,7 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
         cenhid_catalog: Path,
         center_catalog: Path,
         g2_catalog: Path,
+        g7_catalog: Path,
         g11_catalog: Path,
     ) -> None:
         super().__init__()
@@ -46,6 +57,7 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
         self.cenhid_catalog = cenhid_catalog
         self.center_catalog = center_catalog
         self.g2_catalog = g2_catalog
+        self.g7_catalog = g7_catalog
         self.g11_catalog = g11_catalog
 
     def _validate_all_templates(
@@ -56,6 +68,11 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
         dacoce_template: Path,
         comcen_template: Path,
         vepoen_template: Path,
+        comene_template: Path,
+        venene_template: Path,
+        comnet_template: Path,
+        traene_template: Path,
+        valene_template: Path,
         cacehi_template: Path,
         cacete_template: Path,
     ) -> None:
@@ -110,6 +127,56 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
             f"advertencias={vepoen_result.warning_count}"
         )
 
+        comene_result = validate_comene_template(
+            template_path=comene_template,
+            period=self.period,
+            catalog_path=self.g7_catalog,
+        )
+        self.log.emit(
+            f"COMENE validación: errores={comene_result.error_count}, "
+            f"advertencias={comene_result.warning_count}"
+        )
+
+        venene_result = validate_venene_template(
+            template_path=venene_template,
+            period=self.period,
+            catalog_path=self.g7_catalog,
+        )
+        self.log.emit(
+            f"VENENE validación: errores={venene_result.error_count}, "
+            f"advertencias={venene_result.warning_count}"
+        )
+
+        comnet_result = validate_comnet_template(
+            template_path=comnet_template,
+            period=self.period,
+            catalog_path=self.g7_catalog,
+        )
+        self.log.emit(
+            f"COMNET validación: errores={comnet_result.error_count}, "
+            f"advertencias={comnet_result.warning_count}"
+        )
+
+        traene_result = validate_traene_template(
+            template_path=traene_template,
+            period=self.period,
+            catalog_path=self.g7_catalog,
+        )
+        self.log.emit(
+            f"TRAENE validación: errores={traene_result.error_count}, "
+            f"advertencias={traene_result.warning_count}"
+        )
+
+        valene_result = validate_valene_template(
+            template_path=valene_template,
+            period=self.period,
+            catalog_path=self.g7_catalog,
+        )
+        self.log.emit(
+            f"VALENE validación: errores={valene_result.error_count}, "
+            f"advertencias={valene_result.warning_count}"
+        )
+
         cacehi_result = validate_cacehi_template(
             template_path=cacehi_template,
             period=self.period,
@@ -156,6 +223,11 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
             or dacoce_result.has_errors
             or comcen_result.has_errors
             or vepoen_result.has_errors
+            or comene_result.has_errors
+            or venene_result.has_errors
+            or comnet_result.has_errors
+            or traene_result.has_errors
+            or valene_result.has_errors
             or cacehi_result.has_errors
             or cacete_result.has_errors
         )
@@ -196,6 +268,41 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
                     f"{_issue_field(issue)} | {_issue_message(issue)} | {_issue_value(issue)}"
                 )
 
+        for issue in comene_result.issues[:10]:
+            if _is_error_issue(issue):
+                self.log.emit(
+                    f"ERROR COMENE | {_issue_location(issue)} | "
+                    f"{_issue_field(issue)} | {_issue_message(issue)} | {_issue_value(issue)}"
+                )
+
+        for issue in venene_result.issues[:10]:
+            if _is_error_issue(issue):
+                self.log.emit(
+                    f"ERROR VENENE | {_issue_location(issue)} | "
+                    f"{_issue_field(issue)} | {_issue_message(issue)} | {_issue_value(issue)}"
+                )
+
+        for issue in comnet_result.issues[:10]:
+            if _is_error_issue(issue):
+                self.log.emit(
+                    f"ERROR COMNET | {_issue_location(issue)} | "
+                    f"{_issue_field(issue)} | {_issue_message(issue)} | {_issue_value(issue)}"
+                )
+
+        for issue in traene_result.issues[:10]:
+            if _is_error_issue(issue):
+                self.log.emit(
+                    f"ERROR TRAENE | {_issue_location(issue)} | "
+                    f"{_issue_field(issue)} | {_issue_message(issue)} | {_issue_value(issue)}"
+                )
+
+        for issue in valene_result.issues[:10]:
+            if _is_error_issue(issue):
+                self.log.emit(
+                    f"ERROR VALENE | {_issue_location(issue)} | "
+                    f"{_issue_field(issue)} | {_issue_message(issue)} | {_issue_value(issue)}"
+                )
+
         for issue in cacehi_result.issues[:10]:
             if _is_error_issue(issue):
                 self.log.emit(
@@ -223,6 +330,11 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
             source_dacoce = self.raw_dir / "DACOCE.DBF"
             source_comcen = self.raw_dir / "COMCEN.DBF"
             source_vepoen = self.raw_dir / "VEPOEN.DBF"
+            source_comene = self.raw_dir / "COMENE.DBF"
+            source_venene = self.raw_dir / "VENENE.DBF"
+            source_comnet = self.raw_dir / "COMNET.DBF"
+            source_traene = self.raw_dir / "TRAENE.DBF"
+            source_valene = self.raw_dir / "VALENE.DBF"
             source_cacehi = self.raw_dir / "CACEHI.DBF"
             source_cacete = self.raw_dir / "CACETE.DBF"
 
@@ -234,6 +346,11 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
             dacoce_template = templates_dir / f"DACOCE_{period_label}_template.xlsx"
             comcen_template = templates_dir / f"COMCEN_{period_label}_template.xlsx"
             vepoen_template = templates_dir / f"VEPOEN_{period_label}_template.xlsx"
+            comene_template = templates_dir / f"COMENE_{period_label}_template.xlsx"
+            venene_template = templates_dir / f"VENENE_{period_label}_template.xlsx"
+            comnet_template = templates_dir / f"COMNET_{period_label}_template.xlsx"
+            traene_template = templates_dir / f"TRAENE_{period_label}_template.xlsx"
+            valene_template = templates_dir / f"VALENE_{period_label}_template.xlsx"
             cacehi_template = templates_dir / f"CACEHI_{period_label}_template.xlsx"
             cacete_template = templates_dir / f"CACETE_{period_label}_template.xlsx"
 
@@ -243,6 +360,11 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
                 source_dacoce,
                 source_comcen,
                 source_vepoen,
+                source_comene,
+                source_venene,
+                source_comnet,
+                source_traene,
+                source_valene,
                 source_cacehi,
                 source_cacete,
                 cenhid_template,
@@ -250,11 +372,17 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
                 dacoce_template,
                 comcen_template,
                 vepoen_template,
+                comene_template,
+                venene_template,
+                comnet_template,
+                traene_template,
+                valene_template,
                 cacehi_template,
                 cacete_template,
                 self.cenhid_catalog,
                 self.center_catalog,
                 self.g2_catalog,
+                self.g7_catalog,
                 self.g11_catalog,
             ]:
                 self._ensure_file(path)
@@ -269,6 +397,11 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
                 dacoce_template=dacoce_template,
                 comcen_template=comcen_template,
                 vepoen_template=vepoen_template,
+                comene_template=comene_template,
+                venene_template=venene_template,
+                comnet_template=comnet_template,
+                traene_template=traene_template,
+                valene_template=valene_template,
                 cacehi_template=cacehi_template,
                 cacete_template=cacete_template,
             )
@@ -337,6 +470,71 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
             self.log.emit(
                 f"VEPOEN exportado: {vepoen_result.output_path} "
                 f"({vepoen_result.appended_record_count} registros nuevos)"
+            )
+
+            self.log.emit("Exportando COMENE.DBF...")
+            comene_result = export_comene_dbf(
+                source_dbf_path=source_comene,
+                template_path=comene_template,
+                period=self.period,
+                catalog_path=self.g7_catalog,
+                output_path=output_dbf_dir / "COMENE.DBF",
+            )
+            self.log.emit(
+                f"COMENE exportado: {comene_result.output_path} "
+                f"({comene_result.appended_record_count} registros nuevos)"
+            )
+
+            self.log.emit("Exportando VENENE.DBF...")
+            venene_result = export_venene_dbf(
+                source_dbf_path=source_venene,
+                template_path=venene_template,
+                period=self.period,
+                catalog_path=self.g7_catalog,
+                output_path=output_dbf_dir / "VENENE.DBF",
+            )
+            self.log.emit(
+                f"VENENE exportado: {venene_result.output_path} "
+                f"({venene_result.appended_record_count} registros nuevos)"
+            )
+
+            self.log.emit("Exportando COMNET.DBF...")
+            comnet_result = export_comnet_dbf(
+                source_dbf_path=source_comnet,
+                template_path=comnet_template,
+                period=self.period,
+                catalog_path=self.g7_catalog,
+                output_path=output_dbf_dir / "COMNET.DBF",
+            )
+            self.log.emit(
+                f"COMNET exportado: {comnet_result.output_path} "
+                f"({comnet_result.appended_record_count} registros nuevos)"
+            )
+
+            self.log.emit("Exportando TRAENE.DBF...")
+            traene_result = export_traene_dbf(
+                source_dbf_path=source_traene,
+                template_path=traene_template,
+                period=self.period,
+                catalog_path=self.g7_catalog,
+                output_path=output_dbf_dir / "TRAENE.DBF",
+            )
+            self.log.emit(
+                f"TRAENE exportado: {traene_result.output_path} "
+                f"({traene_result.appended_record_count} registros nuevos)"
+            )
+
+            self.log.emit("Exportando VALENE.DBF...")
+            valene_result = export_valene_dbf(
+                source_dbf_path=source_valene,
+                template_path=valene_template,
+                period=self.period,
+                catalog_path=self.g7_catalog,
+                output_path=output_dbf_dir / "VALENE.DBF",
+            )
+            self.log.emit(
+                f"VALENE exportado: {valene_result.output_path} "
+                f"({valene_result.appended_record_count} registros nuevos)"
             )
 
             self.log.emit("Exportando CACEHI.DBF...")
