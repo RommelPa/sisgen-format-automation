@@ -10,8 +10,13 @@ from sisgen_automation.cacete.template import create_cacete_template
 from sisgen_automation.cenhid.template import create_cenhid_template
 from sisgen_automation.center.template import create_center_template
 from sisgen_automation.comcen.template import create_comcen_template
+from sisgen_automation.comene.template import create_comene_template
+from sisgen_automation.comnet.template import create_comnet_template
 from sisgen_automation.dacoce.template import create_dacoce_template
 from sisgen_automation.g2.template import create_vepoen_template
+from sisgen_automation.traene.template import create_traene_template
+from sisgen_automation.valene.template import create_valene_template
+from sisgen_automation.venene.template import create_venene_template
 from sisgen_automation.ui.workers.base import WorkerFileMixin
 
 
@@ -29,6 +34,7 @@ class TemplateWorker(QObject, WorkerFileMixin):
         cenhid_catalog: Path,
         center_catalog: Path,
         g2_catalog: Path,
+        g7_catalog: Path,
         g11_catalog: Path,
     ) -> None:
         super().__init__()
@@ -38,6 +44,7 @@ class TemplateWorker(QObject, WorkerFileMixin):
         self.cenhid_catalog = cenhid_catalog
         self.center_catalog = center_catalog
         self.g2_catalog = g2_catalog
+        self.g7_catalog = g7_catalog
         self.g11_catalog = g11_catalog
 
     def run(self) -> None:
@@ -45,6 +52,7 @@ class TemplateWorker(QObject, WorkerFileMixin):
             self._ensure_file(self.cenhid_catalog)
             self._ensure_file(self.center_catalog)
             self._ensure_file(self.g2_catalog)
+            self._ensure_file(self.g7_catalog)
             self._ensure_file(self.g11_catalog)
 
             dacoce_path = self.raw_dir / "DACOCE.DBF"
@@ -103,6 +111,46 @@ class TemplateWorker(QObject, WorkerFileMixin):
                 output_path=templates_dir / f"VEPOEN_{period_label}_template.xlsx",
             )
             self.log.emit(f"VEPOEN: {vepoen_output.output_path}")
+
+            self.log.emit("Generando plantilla COMENE...")
+            comene_output = create_comene_template(
+                period=self.period,
+                catalog_path=self.g7_catalog,
+                output_path=templates_dir / f"COMENE_{period_label}_template.xlsx",
+            )
+            self.log.emit(f"COMENE: {comene_output.output_path}")
+
+            self.log.emit("Generando plantilla VENENE...")
+            venene_output = create_venene_template(
+                period=self.period,
+                catalog_path=self.g7_catalog,
+                output_path=templates_dir / f"VENENE_{period_label}_template.xlsx",
+            )
+            self.log.emit(f"VENENE: {venene_output.output_path}")
+
+            self.log.emit("Generando plantilla COMNET...")
+            comnet_output = create_comnet_template(
+                period=self.period,
+                catalog_path=self.g7_catalog,
+                output_path=templates_dir / f"COMNET_{period_label}_template.xlsx",
+            )
+            self.log.emit(f"COMNET: {comnet_output.output_path}")
+
+            self.log.emit("Generando plantilla TRAENE...")
+            traene_output = create_traene_template(
+                period=self.period,
+                catalog_path=self.g7_catalog,
+                output_path=templates_dir / f"TRAENE_{period_label}_template.xlsx",
+            )
+            self.log.emit(f"TRAENE: {traene_output.output_path}")
+
+            self.log.emit("Generando plantilla VALENE...")
+            valene_output = create_valene_template(
+                period=self.period,
+                catalog_path=self.g7_catalog,
+                output_path=templates_dir / f"VALENE_{period_label}_template.xlsx",
+            )
+            self.log.emit(f"VALENE: {valene_output.output_path}")
 
             self.log.emit("Generando plantilla CACEHI...")
             cacehi_output = create_cacehi_template(
