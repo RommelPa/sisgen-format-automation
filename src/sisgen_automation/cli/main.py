@@ -5,6 +5,7 @@ import typer
 from rich.console import Console
 from sisgen_automation.cli.g7 import register_g7_commands
 from sisgen_automation.cli.g8 import register_g8_commands
+from sisgen_automation.cli.u2 import register_u2_commands
 from sisgen_automation.cli.g11 import register_g11_commands
 from sisgen_automation.cli.g2 import register_g2_commands
 from sisgen_automation.cli.g1 import register_g1_commands
@@ -22,6 +23,7 @@ app = typer.Typer(
 console = Console()
 register_g7_commands(app, console)
 register_g8_commands(app, console)
+register_u2_commands(app, console)
 register_g11_commands(app, console)
 register_g2_commands(app, console)
 register_g1_commands(app, console)
