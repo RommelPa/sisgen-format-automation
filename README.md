@@ -6,7 +6,7 @@ El proyecto reemplaza trabajo manual realizado en herramientas antiguas o emulad
 
 ## Estado actual
 
-Versión actual: `v1.4.0`
+Versión actual: `v1.5.0`
 
 Funcionalidades implementadas:
 
@@ -19,6 +19,7 @@ Funcionalidades implementadas:
 * Interfaz gráfica desktop para flujo mensual.
 * CLI modularizado por formato.
 * Soporte funcional para formatos G1, G2, G7 y G11.
+* Empaquetado Windows reproducible con Nuitka.
 
 ## Formatos soportados
 
@@ -379,6 +380,7 @@ Por seguridad y limpieza, no se suben al repositorio:
 * entorno virtual
 * cachés de Python
 * builds y ejecutables generados
+* salidas de Nuitka
 
 Ejemplos:
 
@@ -390,6 +392,7 @@ config/local/*.yaml
 __pycache__/
 build/
 dist/
+dist-nuitka/
 ```
 
 ## Estructura principal
@@ -428,6 +431,15 @@ git status
 
 ## Historial de versiones
 
+### v1.5.0
+
+* Empaquetado Windows reproducible con Nuitka.
+* Script de build scripts/build_windows_nuitka.ps1.
+* Launcher desktop run_desktop.py.
+* Build standalone validada en Windows.
+* Ejecutable probado sin bloqueo de SentinelOne.
+* Salida de build dist-nuitka/ ignorada por Git.
+
 ### v1.4.0
 
 * Modularización del CLI.
@@ -454,21 +466,83 @@ git status
 * Validación de fuentes G2.
 * Generación TXT G2.
 
+## Empaquetado Windows
+
+El proyecto usa Nuitka para generar una carpeta ejecutable standalone en Windows.
+
+Instalar dependencias de empaquetado:
+
+```powershell
+pip install -e ".[desktop,packaging]"
+```
+
+Construir el ejecutable:
+
+```powershell
+.\scripts\build_windows_nuitka.ps1
+```
+
+El ejecutable se genera en:
+
+```text
+dist-nuitka/run_desktop.dist/SISGEN-Format-Automation.exe
+```
+
+La carpeta completa run_desktop.dist es el entregable. No se debe copiar solo el .exe, porque la aplicación necesita las DLL, plugins Qt y dependencias incluidas dentro de esa carpeta.
+
+Para crear un ZIP de distribución:
+
+```powershell
+Compress-Archive `
+  -Path dist-nuitka\run_desktop.dist\* `
+  -DestinationPath ..\SISGEN-Format-Automation-v1.5.0-windows.zip `
+  -Force
+```
+
+Distribución interna
+
+La distribución recomendada tiene esta estructura:
+
+```text
+SISGEN-Format-Automation/
+  SISGEN-Format-Automation.exe
+  _internal o dependencias generadas por Nuitka
+  PySide6/
+  data/
+    raw/
+  config/
+    local/
+  reports/
+```
+
+La carpeta data/raw debe contener los DBF base autorizados para operación mensual.
+
+La carpeta config/local debe contener los catálogos YAML locales requeridos:
+
+* config/local/cenhid_units.yaml
+* config/local/center_units.yaml
+* config/local/g2_distributors.yaml
+* config/local/g7_units.yaml
+* config/local/g11_units.yaml
+
+La carpeta reports se usa para plantillas, DBF exportados y TXT generados.
+
+Los archivos reales de data/raw y config/local no se versionan en GitHub. Solo deben incluirse en paquetes internos autorizados o copiarse manualmente en la instalación local.
+
 ## Limitaciones conocidas
 
-* El empaquetado final como ejecutable Windows todavía está pendiente.
-* El formato visual final de algunos TXT puede requerir ajuste de presentación.
 * Los catálogos locales deben mantenerse manualmente.
 * El sistema depende de que las plantillas Excel sean llenadas correctamente antes de exportar DBF.
+* La distribución operativa con DBF reales y catálogos debe manejarse solo por canales internos autorizados.
+* El formato visual final de algunos TXT puede requerir ajuste de presentación.
 
 ## Próximos pasos
 
-* Empaquetar como ejecutable Windows.
-* Mejorar el diseño visual de la interfaz desktop.
 * Documentar operación mensual paso a paso para usuarios finales.
 * Agregar pruebas automatizadas para workflows críticos.
 * Revisar formato final de TXT con usuarios especialistas.
 * Evaluar integración de nuevos formatos SISGEN.
+* Evaluar firma de código o instalador formal si la herramienta se distribuye a más usuarios.
 
 ## Licencia
 
