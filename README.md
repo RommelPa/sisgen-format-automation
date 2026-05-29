@@ -2,7 +2,7 @@
 
 Automatización de formatos mensuales SISGEN para archivos DBF históricos, generación de plantillas Excel, exportación de DBF mensuales y generación de reportes TXT.
 
-El proyecto reemplaza trabajo manual realizado en herramientas antiguas o emuladores. Mantiene un flujo reproducible, auditable y f?cil de usar para operación mensual.
+El proyecto reemplaza trabajo manual realizado en herramientas antiguas o emuladores. Mantiene un flujo reproducible, auditable y fácil de usar para operación mensual.
 
 ## Estado actual
 
