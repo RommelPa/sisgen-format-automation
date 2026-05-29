@@ -71,7 +71,7 @@ src/sisgen_automation/
   ui/        interfaz desktop
 ```
 
-## Reglas de dise?o
+## Reglas de diseño
 
 * La lógica de negocio vive fuera de la interfaz gráfica.
 * El CLI y el desktop deben reutilizar la misma lógica core.

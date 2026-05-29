@@ -9,7 +9,7 @@
 * Generación de plantilla VEFAME.
 * Validación de plantilla VEFAME.
 * Exportación VEFAME.DBF mensual.
-* Integración VEFAME en desktop para plantillas y exportaci?n DBF.
+* Integración VEFAME en desktop para plantillas y exportación DBF.
 * Integración del Reporte G8 en desktop.
 
 ## v1.5.0
@@ -43,6 +43,6 @@
 ## v1.2.0
 
 * Integración del flujo G2.
-* Plantilla y exportaci?n VEPOEN.
+* Plantilla y exportación VEPOEN.
 * Validación de fuentes G2.
 * Generación TXT G2.

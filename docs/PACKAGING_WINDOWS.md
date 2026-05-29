@@ -20,7 +20,7 @@ El ejecutable se genera en:
 dist-nuitka/run_desktop.dist/SISGEN-Format-Automation.exe
 ```
 
-## Crear ZIP de distribuci?n
+## Crear ZIP de distribución
 
 ```powershell
 Compress-Archive `
@@ -35,7 +35,7 @@ No copiar solo el `.exe`.
 
 La carpeta completa `run_desktop.dist` es el entregable, porque contiene dependencias, DLL y plugins Qt.
 
-## Distribuci?n interna
+## Distribución interna
 
 Para uso operativo interno, el ZIP puede incluir carpetas como:
 

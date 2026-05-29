@@ -1,8 +1,8 @@
-# Gu?a de usuario
+# Guía de usuario
 
 Esta guía describe el flujo mensual recomendado para operar SISGEN Format Automation desde la interfaz desktop.
 
-## 1. Abrir la aplicaci?n
+## 1. Abrir la aplicación
 
 Desde el entorno de desarrollo:
 
@@ -16,7 +16,7 @@ Desde una distribución Windows empaquetada, abrir:
 SISGEN-Format-Automation.exe
 ```
 
-## 2. Configurar par?metros
+## 2. Configurar parámetros
 
 En la pestaña de configuración, revisar:
 
@@ -49,10 +49,10 @@ Las celdas editables aparecen resaltadas. Las celdas protegidas no deben modific
 
 Completar manualmente los campos editables.
 
-Regla b?sica:
+Regla básica:
 
 ```text
-Si un valor no aplica, usar 0. No dejar celdas obligatorias vac?as.
+Si un valor no aplica, usar 0. No dejar celdas obligatorias vacías.
 ```
 
 ## 5. Exportar DBF
