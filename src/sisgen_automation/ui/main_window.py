@@ -25,6 +25,7 @@ from sisgen_automation.ui.workers.g11 import G11Worker
 from sisgen_automation.ui.workers.g2 import G2Worker
 from sisgen_automation.ui.workers.g7 import G7Worker
 from sisgen_automation.ui.workers.g8 import G8Worker
+from sisgen_automation.ui.workers.u2 import U2Worker
 from sisgen_automation.ui.workers.templates import TemplateWorker
 
 
@@ -40,6 +41,7 @@ class MainWindow(QMainWindow):
             | G2Worker
             | G7Worker
             | G8Worker
+            | U2Worker
             | G11Worker
             | None
         ) = None
@@ -66,6 +68,8 @@ class MainWindow(QMainWindow):
         self.generate_g7_button = QPushButton("Generar TXT G7")
         self.validate_g8_button = QPushButton("Validar fuentes G8")
         self.generate_g8_button = QPushButton("Generar TXT G8")
+        self.validate_u2_button = QPushButton("Validar fuentes U2")
+        self.generate_u2_button = QPushButton("Generar TXT U2")
         self.validate_g11_button = QPushButton("Validar fuentes G11")
         self.generate_g11_button = QPushButton("Generar TXT G11")
         self.generate_templates_button = QPushButton("Generar plantillas mensuales")
@@ -91,6 +95,7 @@ class MainWindow(QMainWindow):
             self.generate_g2_button,
             self.generate_g7_button,
             self.generate_g8_button,
+            self.generate_u2_button,
             self.generate_g11_button,
         ]
         secondary_buttons = [
@@ -98,6 +103,7 @@ class MainWindow(QMainWindow):
             self.validate_g2_button,
             self.validate_g7_button,
             self.validate_g8_button,
+            self.validate_u2_button,
             self.validate_g11_button,
         ]
 
@@ -250,7 +256,8 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self._build_g2_tab(), "5. G2")
         self.tabs.addTab(self._build_g7_tab(), "6. G7")
         self.tabs.addTab(self._build_g8_tab(), "7. G8")
-        self.tabs.addTab(self._build_g11_tab(), "8. G11")
+        self.tabs.addTab(self._build_u2_tab(), "8. U2")
+        self.tabs.addTab(self._build_g11_tab(), "9. G11")
         self.tabs.addTab(self._build_logs_tab(), "Logs")
 
         self.setCentralWidget(root)
@@ -516,6 +523,40 @@ class MainWindow(QMainWindow):
 
         return tab
 
+
+    def _build_u2_tab(self) -> QWidget:
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+
+        title = QLabel("Reporte U2")
+        title.setStyleSheet("font-size: 18px; font-weight: bold;")
+
+        description = QLabel(
+            "Valida CIUGEN.DBF desde la carpeta DBF configurada y genera el TXT del Formato U2."
+        )
+        description.setWordWrap(True)
+
+        actions_group = QGroupBox("Acciones")
+        actions_layout = QHBoxLayout(actions_group)
+        actions_layout.addWidget(self.validate_u2_button)
+        actions_layout.addWidget(self.generate_u2_button)
+        actions_layout.addStretch()
+
+        note = QLabel(
+            "Para crear CIUGEN.DBF mensual, usa primero Plantillas y Exportar DBF. "
+            "Después la carpeta DBF se actualiza automáticamente y este reporte usa el CIUGEN exportado."
+        )
+        note.setWordWrap(True)
+        note.setStyleSheet("color: #555;")
+
+        layout.addWidget(title)
+        layout.addWidget(description)
+        layout.addWidget(actions_group)
+        layout.addWidget(note)
+        layout.addStretch()
+
+        return tab
+
     def _build_g11_tab(self) -> QWidget:
         tab = QWidget()
         layout = QVBoxLayout(tab)
@@ -578,7 +619,7 @@ class MainWindow(QMainWindow):
     def _handle_exported_dbf_dir(self, path: str) -> None:
         self.raw_dir_input.setText(path)
         self._append_log(f"Carpeta DBF actualizada automáticamente: {path}")
-        self._append_log("Ahora puedes generar G1, G2, G7, G8 y G11 usando los DBF exportados.")
+        self._append_log("Ahora puedes generar G1, G2, G7, G8, U2 y G11 usando los DBF exportados.")
 
 
     def _connect_events(self) -> None:
@@ -590,6 +631,8 @@ class MainWindow(QMainWindow):
         self.generate_g7_button.clicked.connect(lambda: self._start_g7_worker("generate"))
         self.validate_g8_button.clicked.connect(lambda: self._start_g8_worker("validate"))
         self.generate_g8_button.clicked.connect(lambda: self._start_g8_worker("generate"))
+        self.validate_u2_button.clicked.connect(lambda: self._start_u2_worker("validate"))
+        self.generate_u2_button.clicked.connect(lambda: self._start_u2_worker("generate"))
         self.validate_g11_button.clicked.connect(lambda: self._start_g11_worker("validate"))
         self.generate_g11_button.clicked.connect(lambda: self._start_g11_worker("generate"))
         self.generate_templates_button.clicked.connect(self._start_template_worker)
@@ -838,6 +881,38 @@ class MainWindow(QMainWindow):
 
         self.worker_thread.start()
 
+
+    def _start_u2_worker(self, action: str) -> None:
+        if self.worker_thread is not None:
+            QMessageBox.warning(self, "Proceso en ejecución", "Ya hay un proceso ejecutándose.")
+            return
+
+        self._show_logs_tab()
+        self._set_buttons_enabled(False)
+        self._append_log("=" * 80)
+        self._append_log("Iniciando proceso U2...")
+
+        self.worker_thread = QThread()
+        self.worker = U2Worker(
+            action=action,
+            period=self.period_input.text().strip(),
+            raw_dir=Path(self.raw_dir_input.text().strip()),
+            output_dir=Path(self.output_dir_input.text().strip()),
+            u2_catalog=Path(self.u2_catalog_input.text().strip()),
+        )
+
+        self.worker.moveToThread(self.worker_thread)
+
+        self.worker_thread.started.connect(self.worker.run)
+        self.worker.log.connect(self._append_log)
+        self.worker.finished.connect(self._handle_success)
+        self.worker.failed.connect(self._handle_failure)
+        self.worker.finished.connect(self.worker_thread.quit)
+        self.worker.failed.connect(self.worker_thread.quit)
+        self.worker_thread.finished.connect(self._cleanup_worker)
+
+        self.worker_thread.start()
+
     def _start_g11_worker(self, action: str) -> None:
         if self.worker_thread is not None:
             QMessageBox.warning(self, "Proceso en ejecución", "Ya hay un proceso ejecutándose.")
@@ -894,6 +969,8 @@ class MainWindow(QMainWindow):
         self.generate_g7_button.setEnabled(enabled)
         self.validate_g8_button.setEnabled(enabled)
         self.generate_g8_button.setEnabled(enabled)
+        self.validate_u2_button.setEnabled(enabled)
+        self.generate_u2_button.setEnabled(enabled)
         self.validate_g11_button.setEnabled(enabled)
         self.generate_g11_button.setEnabled(enabled)
         self.clear_log_button.setEnabled(enabled)
