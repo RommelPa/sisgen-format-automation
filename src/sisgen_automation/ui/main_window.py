@@ -46,6 +46,7 @@ class MainWindow(QMainWindow):
         self.center_catalog_input = QLineEdit(str(Path("config/local/center_units.yaml")))
         self.g2_catalog_input = QLineEdit(str(Path("config/local/g2_distributors.yaml")))
         self.g7_catalog_input = QLineEdit(str(Path("config/local/g7_units.yaml")))
+        self.g8_catalog_input = QLineEdit(str(Path("config/local/g8_clients.yaml")))
         self.g11_catalog_input = QLineEdit(str(Path("config/local/g11_units.yaml")))
 
         self.validate_g1_button = QPushButton("Validar fuentes G1")
@@ -273,6 +274,10 @@ class MainWindow(QMainWindow):
             self._path_row(self.g7_catalog_input, self._select_g7_catalog),
         )
         form.addRow(
+            "Catálogo G8:",
+            self._path_row(self.g8_catalog_input, self._select_g8_catalog),
+        )
+        form.addRow(
             "Catálogo G11:",
             self._path_row(self.g11_catalog_input, self._select_g11_catalog),
         )
@@ -311,7 +316,7 @@ class MainWindow(QMainWindow):
 
         note = QLabel(
             "Salida: reports/templates. "
-            "VEPOEN toma automáticamente el último periodo válido del DBF base."
+            "VEPOEN y VEFAME toman automáticamente el último periodo válido del DBF base."
         )
         note.setWordWrap(True)
         note.setStyleSheet("color: #555;")
@@ -556,6 +561,9 @@ class MainWindow(QMainWindow):
     def _select_g7_catalog(self) -> None:
         self._select_file(self.g7_catalog_input, "YAML (*.yaml *.yml)")
 
+    def _select_g8_catalog(self) -> None:
+        self._select_file(self.g8_catalog_input, "YAML (*.yaml *.yml)")
+
     def _select_g11_catalog(self) -> None:
         self._select_file(self.g11_catalog_input, "YAML (*.yaml *.yml)")
 
@@ -593,6 +601,7 @@ class MainWindow(QMainWindow):
             center_catalog=Path(self.center_catalog_input.text().strip()),
             g2_catalog=Path(self.g2_catalog_input.text().strip()),
             g7_catalog=Path(self.g7_catalog_input.text().strip()),
+            g8_catalog=Path(self.g8_catalog_input.text().strip()),
             g11_catalog=Path(self.g11_catalog_input.text().strip()),
         )
 
@@ -627,6 +636,7 @@ class MainWindow(QMainWindow):
             center_catalog=Path(self.center_catalog_input.text().strip()),
             g2_catalog=Path(self.g2_catalog_input.text().strip()),
             g7_catalog=Path(self.g7_catalog_input.text().strip()),
+            g8_catalog=Path(self.g8_catalog_input.text().strip()),
             g11_catalog=Path(self.g11_catalog_input.text().strip()),
         )
 

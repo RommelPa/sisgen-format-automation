@@ -23,6 +23,8 @@ from sisgen_automation.dacoce.export_dbf import export_dacoce_dbf
 from sisgen_automation.dacoce.template_validation import validate_dacoce_template
 from sisgen_automation.g2.export_dbf import export_vepoen_dbf
 from sisgen_automation.g2.template_validation import validate_vepoen_template
+from sisgen_automation.vefame.export_dbf import export_vefame_dbf
+from sisgen_automation.vefame.template_validation import validate_vefame_template
 from sisgen_automation.traene.export_dbf import export_traene_dbf
 from sisgen_automation.traene.template_validation import validate_traene_template
 from sisgen_automation.valene.export_dbf import export_valene_dbf
@@ -48,6 +50,7 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
         center_catalog: Path,
         g2_catalog: Path,
         g7_catalog: Path,
+        g8_catalog: Path,
         g11_catalog: Path,
     ) -> None:
         super().__init__()
@@ -58,6 +61,7 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
         self.center_catalog = center_catalog
         self.g2_catalog = g2_catalog
         self.g7_catalog = g7_catalog
+        self.g8_catalog = g8_catalog
         self.g11_catalog = g11_catalog
 
     def _validate_all_templates(
@@ -68,6 +72,7 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
         dacoce_template: Path,
         comcen_template: Path,
         vepoen_template: Path,
+        vefame_template: Path,
         comene_template: Path,
         venene_template: Path,
         comnet_template: Path,
@@ -125,6 +130,16 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
         self.log.emit(
             f"VEPOEN validación: errores={vepoen_result.error_count}, "
             f"advertencias={vepoen_result.warning_count}"
+        )
+
+        vefame_result = validate_vefame_template(
+            template_path=vefame_template,
+            period=self.period,
+            catalog_path=self.g8_catalog,
+        )
+        self.log.emit(
+            f"VEFAME validación: errores={vefame_result.error_count}, "
+            f"advertencias={vefame_result.warning_count}"
         )
 
         comene_result = validate_comene_template(
@@ -223,6 +238,7 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
             or dacoce_result.has_errors
             or comcen_result.has_errors
             or vepoen_result.has_errors
+            or vefame_result.has_errors
             or comene_result.has_errors
             or venene_result.has_errors
             or comnet_result.has_errors
@@ -265,6 +281,13 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
             if _is_error_issue(issue):
                 self.log.emit(
                     f"ERROR VEPOEN | {_issue_location(issue)} | "
+                    f"{_issue_field(issue)} | {_issue_message(issue)} | {_issue_value(issue)}"
+                )
+
+        for issue in vefame_result.issues[:10]:
+            if _is_error_issue(issue):
+                self.log.emit(
+                    f"ERROR VEFAME | {_issue_location(issue)} | "
                     f"{_issue_field(issue)} | {_issue_message(issue)} | {_issue_value(issue)}"
                 )
 
@@ -330,6 +353,7 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
             source_dacoce = self.raw_dir / "DACOCE.DBF"
             source_comcen = self.raw_dir / "COMCEN.DBF"
             source_vepoen = self.raw_dir / "VEPOEN.DBF"
+            source_vefame = self.raw_dir / "VEFAME.DBF"
             source_comene = self.raw_dir / "COMENE.DBF"
             source_venene = self.raw_dir / "VENENE.DBF"
             source_comnet = self.raw_dir / "COMNET.DBF"
@@ -346,6 +370,7 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
             dacoce_template = templates_dir / f"DACOCE_{period_label}_template.xlsx"
             comcen_template = templates_dir / f"COMCEN_{period_label}_template.xlsx"
             vepoen_template = templates_dir / f"VEPOEN_{period_label}_template.xlsx"
+            vefame_template = templates_dir / f"VEFAME_{period_label}_template.xlsx"
             comene_template = templates_dir / f"COMENE_{period_label}_template.xlsx"
             venene_template = templates_dir / f"VENENE_{period_label}_template.xlsx"
             comnet_template = templates_dir / f"COMNET_{period_label}_template.xlsx"
@@ -360,6 +385,7 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
                 source_dacoce,
                 source_comcen,
                 source_vepoen,
+                source_vefame,
                 source_comene,
                 source_venene,
                 source_comnet,
@@ -372,6 +398,7 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
                 dacoce_template,
                 comcen_template,
                 vepoen_template,
+                vefame_template,
                 comene_template,
                 venene_template,
                 comnet_template,
@@ -383,6 +410,7 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
                 self.center_catalog,
                 self.g2_catalog,
                 self.g7_catalog,
+                self.g8_catalog,
                 self.g11_catalog,
             ]:
                 self._ensure_file(path)
@@ -397,6 +425,7 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
                 dacoce_template=dacoce_template,
                 comcen_template=comcen_template,
                 vepoen_template=vepoen_template,
+                vefame_template=vefame_template,
                 comene_template=comene_template,
                 venene_template=venene_template,
                 comnet_template=comnet_template,
@@ -470,6 +499,19 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
             self.log.emit(
                 f"VEPOEN exportado: {vepoen_result.output_path} "
                 f"({vepoen_result.appended_record_count} registros nuevos)"
+            )
+
+            self.log.emit("Exportando VEFAME.DBF...")
+            vefame_result = export_vefame_dbf(
+                source_dbf_path=source_vefame,
+                template_path=vefame_template,
+                period=self.period,
+                catalog_path=self.g8_catalog,
+                output_path=output_dbf_dir / "VEFAME.DBF",
+            )
+            self.log.emit(
+                f"VEFAME exportado: {vefame_result.output_path} "
+                f"({vefame_result.appended_record_count} registros nuevos)"
             )
 
             self.log.emit("Exportando COMENE.DBF...")

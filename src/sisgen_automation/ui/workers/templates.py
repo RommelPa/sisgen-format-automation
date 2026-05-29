@@ -14,6 +14,7 @@ from sisgen_automation.comene.template import create_comene_template
 from sisgen_automation.comnet.template import create_comnet_template
 from sisgen_automation.dacoce.template import create_dacoce_template
 from sisgen_automation.g2.template import create_vepoen_template
+from sisgen_automation.vefame.template import create_vefame_template
 from sisgen_automation.traene.template import create_traene_template
 from sisgen_automation.valene.template import create_valene_template
 from sisgen_automation.venene.template import create_venene_template
@@ -35,6 +36,7 @@ class TemplateWorker(QObject, WorkerFileMixin):
         center_catalog: Path,
         g2_catalog: Path,
         g7_catalog: Path,
+        g8_catalog: Path,
         g11_catalog: Path,
     ) -> None:
         super().__init__()
@@ -45,6 +47,7 @@ class TemplateWorker(QObject, WorkerFileMixin):
         self.center_catalog = center_catalog
         self.g2_catalog = g2_catalog
         self.g7_catalog = g7_catalog
+        self.g8_catalog = g8_catalog
         self.g11_catalog = g11_catalog
 
     def run(self) -> None:
@@ -53,12 +56,15 @@ class TemplateWorker(QObject, WorkerFileMixin):
             self._ensure_file(self.center_catalog)
             self._ensure_file(self.g2_catalog)
             self._ensure_file(self.g7_catalog)
+            self._ensure_file(self.g8_catalog)
             self._ensure_file(self.g11_catalog)
 
             dacoce_path = self.raw_dir / "DACOCE.DBF"
             vepoen_path = self.raw_dir / "VEPOEN.DBF"
+            vefame_path = self.raw_dir / "VEFAME.DBF"
             self._ensure_file(dacoce_path)
             self._ensure_file(vepoen_path)
+            self._ensure_file(vefame_path)
 
             templates_dir = self.output_dir / "templates"
             templates_dir.mkdir(parents=True, exist_ok=True)
@@ -111,6 +117,16 @@ class TemplateWorker(QObject, WorkerFileMixin):
                 output_path=templates_dir / f"VEPOEN_{period_label}_template.xlsx",
             )
             self.log.emit(f"VEPOEN: {vepoen_output.output_path}")
+
+            self.log.emit("Generando plantilla VEFAME...")
+            vefame_output = create_vefame_template(
+                period=self.period,
+                source_dbf_path=vefame_path,
+                catalog_path=self.g8_catalog,
+                base_period=None,
+                output_path=templates_dir / f"VEFAME_{period_label}_template.xlsx",
+            )
+            self.log.emit(f"VEFAME: {vefame_output.output_path}")
 
             self.log.emit("Generando plantilla COMENE...")
             comene_output = create_comene_template(
