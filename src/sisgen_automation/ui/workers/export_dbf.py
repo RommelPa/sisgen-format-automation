@@ -13,6 +13,8 @@ from sisgen_automation.cenhid.export_dbf import export_cenhid_dbf
 from sisgen_automation.cenhid.template_validation import validate_cenhid_template
 from sisgen_automation.center.export_dbf import export_center_dbf
 from sisgen_automation.center.template_validation import validate_center_template
+from sisgen_automation.ciugen.export_dbf import export_ciugen_dbf
+from sisgen_automation.ciugen.template_validation import validate_ciugen_template
 from sisgen_automation.comcen.export_dbf import export_comcen_dbf
 from sisgen_automation.comcen.template_validation import validate_comcen_template
 from sisgen_automation.comene.export_dbf import export_comene_dbf
@@ -48,6 +50,7 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
         output_dir: Path,
         cenhid_catalog: Path,
         center_catalog: Path,
+        u2_catalog: Path,
         g2_catalog: Path,
         g7_catalog: Path,
         g8_catalog: Path,
@@ -59,6 +62,7 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
         self.output_dir = output_dir
         self.cenhid_catalog = cenhid_catalog
         self.center_catalog = center_catalog
+        self.u2_catalog = u2_catalog
         self.g2_catalog = g2_catalog
         self.g7_catalog = g7_catalog
         self.g8_catalog = g8_catalog
@@ -71,6 +75,7 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
         center_template: Path,
         dacoce_template: Path,
         comcen_template: Path,
+        ciugen_template: Path,
         vepoen_template: Path,
         vefame_template: Path,
         comene_template: Path,
@@ -120,6 +125,16 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
         self.log.emit(
             f"COMCEN validación: errores={comcen_result.error_count}, "
             f"advertencias={comcen_result.warning_count}"
+        )
+
+        ciugen_result = validate_ciugen_template(
+            template_path=ciugen_template,
+            period=self.period,
+            catalog_path=self.u2_catalog,
+        )
+        self.log.emit(
+            f"CIUGEN validación: errores={ciugen_result.error_count}, "
+            f"advertencias={ciugen_result.warning_count}"
         )
 
         vepoen_result = validate_vepoen_template(
@@ -237,6 +252,7 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
             or center_result.has_errors
             or dacoce_result.has_errors
             or comcen_result.has_errors
+            or ciugen_result.has_errors
             or vepoen_result.has_errors
             or vefame_result.has_errors
             or comene_result.has_errors
@@ -274,6 +290,13 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
             if _is_error_issue(issue):
                 self.log.emit(
                     f"ERROR COMCEN | {_issue_location(issue)} | "
+                    f"{_issue_field(issue)} | {_issue_message(issue)} | {_issue_value(issue)}"
+                )
+
+        for issue in ciugen_result.issues[:10]:
+            if _is_error_issue(issue):
+                self.log.emit(
+                    f"ERROR CIUGEN | {_issue_location(issue)} | "
                     f"{_issue_field(issue)} | {_issue_message(issue)} | {_issue_value(issue)}"
                 )
 
@@ -352,6 +375,7 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
             source_center = self.raw_dir / "CENTER.DBF"
             source_dacoce = self.raw_dir / "DACOCE.DBF"
             source_comcen = self.raw_dir / "COMCEN.DBF"
+            source_ciugen = self.raw_dir / "CIUGEN.DBF"
             source_vepoen = self.raw_dir / "VEPOEN.DBF"
             source_vefame = self.raw_dir / "VEFAME.DBF"
             source_comene = self.raw_dir / "COMENE.DBF"
@@ -369,6 +393,7 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
             center_template = templates_dir / f"CENTER_{period_label}_template.xlsx"
             dacoce_template = templates_dir / f"DACOCE_{period_label}_template.xlsx"
             comcen_template = templates_dir / f"COMCEN_{period_label}_template.xlsx"
+            ciugen_template = templates_dir / f"CIUGEN_{period_label}_template.xlsx"
             vepoen_template = templates_dir / f"VEPOEN_{period_label}_template.xlsx"
             vefame_template = templates_dir / f"VEFAME_{period_label}_template.xlsx"
             comene_template = templates_dir / f"COMENE_{period_label}_template.xlsx"
@@ -384,6 +409,7 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
                 source_center,
                 source_dacoce,
                 source_comcen,
+                source_ciugen,
                 source_vepoen,
                 source_vefame,
                 source_comene,
@@ -397,6 +423,7 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
                 center_template,
                 dacoce_template,
                 comcen_template,
+                ciugen_template,
                 vepoen_template,
                 vefame_template,
                 comene_template,
@@ -408,6 +435,7 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
                 cacete_template,
                 self.cenhid_catalog,
                 self.center_catalog,
+                self.u2_catalog,
                 self.g2_catalog,
                 self.g7_catalog,
                 self.g8_catalog,
@@ -424,6 +452,7 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
                 center_template=center_template,
                 dacoce_template=dacoce_template,
                 comcen_template=comcen_template,
+                ciugen_template=ciugen_template,
                 vepoen_template=vepoen_template,
                 vefame_template=vefame_template,
                 comene_template=comene_template,
@@ -486,6 +515,19 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
             self.log.emit(
                 f"COMCEN exportado: {comcen_result.output_path} "
                 f"({comcen_result.appended_record_count} registros nuevos)"
+            )
+
+            self.log.emit("Exportando CIUGEN.DBF...")
+            ciugen_result = export_ciugen_dbf(
+                source_dbf_path=source_ciugen,
+                template_path=ciugen_template,
+                period=self.period,
+                catalog_path=self.u2_catalog,
+                output_path=output_dbf_dir / "CIUGEN.DBF",
+            )
+            self.log.emit(
+                f"CIUGEN exportado: {ciugen_result.output_path} "
+                f"({ciugen_result.appended_record_count} registros nuevos)"
             )
 
             self.log.emit("Exportando VEPOEN.DBF...")

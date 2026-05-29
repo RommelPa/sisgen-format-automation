@@ -9,6 +9,7 @@ from sisgen_automation.cacehi.template import create_cacehi_template
 from sisgen_automation.cacete.template import create_cacete_template
 from sisgen_automation.cenhid.template import create_cenhid_template
 from sisgen_automation.center.template import create_center_template
+from sisgen_automation.ciugen.template import create_ciugen_template
 from sisgen_automation.comcen.template import create_comcen_template
 from sisgen_automation.comene.template import create_comene_template
 from sisgen_automation.comnet.template import create_comnet_template
@@ -34,6 +35,7 @@ class TemplateWorker(QObject, WorkerFileMixin):
         output_dir: Path,
         cenhid_catalog: Path,
         center_catalog: Path,
+        u2_catalog: Path,
         g2_catalog: Path,
         g7_catalog: Path,
         g8_catalog: Path,
@@ -45,6 +47,7 @@ class TemplateWorker(QObject, WorkerFileMixin):
         self.output_dir = output_dir
         self.cenhid_catalog = cenhid_catalog
         self.center_catalog = center_catalog
+        self.u2_catalog = u2_catalog
         self.g2_catalog = g2_catalog
         self.g7_catalog = g7_catalog
         self.g8_catalog = g8_catalog
@@ -54,15 +57,18 @@ class TemplateWorker(QObject, WorkerFileMixin):
         try:
             self._ensure_file(self.cenhid_catalog)
             self._ensure_file(self.center_catalog)
+            self._ensure_file(self.u2_catalog)
             self._ensure_file(self.g2_catalog)
             self._ensure_file(self.g7_catalog)
             self._ensure_file(self.g8_catalog)
             self._ensure_file(self.g11_catalog)
 
             dacoce_path = self.raw_dir / "DACOCE.DBF"
+            ciugen_path = self.raw_dir / "CIUGEN.DBF"
             vepoen_path = self.raw_dir / "VEPOEN.DBF"
             vefame_path = self.raw_dir / "VEFAME.DBF"
             self._ensure_file(dacoce_path)
+            self._ensure_file(ciugen_path)
             self._ensure_file(vepoen_path)
             self._ensure_file(vefame_path)
 
@@ -107,6 +113,16 @@ class TemplateWorker(QObject, WorkerFileMixin):
                 output_path=templates_dir / f"COMCEN_{period_label}_template.xlsx",
             )
             self.log.emit(f"COMCEN: {comcen_output.output_path}")
+
+            self.log.emit("Generando plantilla CIUGEN...")
+            ciugen_output = create_ciugen_template(
+                period=self.period,
+                source_dbf_path=ciugen_path,
+                catalog_path=self.u2_catalog,
+                base_period=None,
+                output_path=templates_dir / f"CIUGEN_{period_label}_template.xlsx",
+            )
+            self.log.emit(f"CIUGEN: {ciugen_output.output_path}")
 
             self.log.emit("Generando plantilla VEPOEN...")
             vepoen_output = create_vepoen_template(

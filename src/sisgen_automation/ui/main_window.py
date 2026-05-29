@@ -52,6 +52,7 @@ class MainWindow(QMainWindow):
         self.output_dir_input = QLineEdit(str(Path("reports")))
         self.cenhid_catalog_input = QLineEdit(str(Path("config/local/cenhid_units.yaml")))
         self.center_catalog_input = QLineEdit(str(Path("config/local/center_units.yaml")))
+        self.u2_catalog_input = QLineEdit(str(Path("config/local/u2_ciiu.yaml")))
         self.g2_catalog_input = QLineEdit(str(Path("config/local/g2_distributors.yaml")))
         self.g7_catalog_input = QLineEdit(str(Path("config/local/g7_units.yaml")))
         self.g8_catalog_input = QLineEdit(str(Path("config/local/g8_clients.yaml")))
@@ -279,6 +280,10 @@ class MainWindow(QMainWindow):
             self._path_row(self.center_catalog_input, self._select_center_catalog),
         )
         form.addRow(
+            "Catálogo U2:",
+            self._path_row(self.u2_catalog_input, self._select_u2_catalog),
+        )
+        form.addRow(
             "Catálogo G2:",
             self._path_row(self.g2_catalog_input, self._select_g2_catalog),
         )
@@ -329,7 +334,7 @@ class MainWindow(QMainWindow):
 
         note = QLabel(
             "Salida: reports/templates. "
-            "VEPOEN y VEFAME toman automáticamente el último periodo válido del DBF base."
+            "CIUGEN, VEPOEN y VEFAME toman automáticamente el último periodo válido del DBF base."
         )
         note.setWordWrap(True)
         note.setStyleSheet("color: #555;")
@@ -604,6 +609,9 @@ class MainWindow(QMainWindow):
         self._select_file(self.center_catalog_input, "YAML (*.yaml *.yml)")
 
 
+    def _select_u2_catalog(self) -> None:
+        self._select_file(self.u2_catalog_input, "YAML (*.yaml *.yml)")
+
     def _select_g2_catalog(self) -> None:
         self._select_file(self.g2_catalog_input, "YAML (*.yaml *.yml)")
 
@@ -648,6 +656,7 @@ class MainWindow(QMainWindow):
             output_dir=Path(self.output_dir_input.text().strip()),
             cenhid_catalog=Path(self.cenhid_catalog_input.text().strip()),
             center_catalog=Path(self.center_catalog_input.text().strip()),
+            u2_catalog=Path(self.u2_catalog_input.text().strip()),
             g2_catalog=Path(self.g2_catalog_input.text().strip()),
             g7_catalog=Path(self.g7_catalog_input.text().strip()),
             g8_catalog=Path(self.g8_catalog_input.text().strip()),
@@ -683,6 +692,7 @@ class MainWindow(QMainWindow):
             output_dir=Path(self.output_dir_input.text().strip()),
             cenhid_catalog=Path(self.cenhid_catalog_input.text().strip()),
             center_catalog=Path(self.center_catalog_input.text().strip()),
+            u2_catalog=Path(self.u2_catalog_input.text().strip()),
             g2_catalog=Path(self.g2_catalog_input.text().strip()),
             g7_catalog=Path(self.g7_catalog_input.text().strip()),
             g8_catalog=Path(self.g8_catalog_input.text().strip()),
