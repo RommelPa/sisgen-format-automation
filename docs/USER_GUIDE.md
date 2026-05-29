@@ -76,6 +76,8 @@ Después de exportar DBF:
 3. Validar fuentes.
 4. Generar TXT.
 
+Para U2, la fuente principal es `CIUGEN.DBF` y el catálogo local es `config/local/u2_ciiu.yaml`.
+
 Los TXT se generan en:
 
 ```text
@@ -83,6 +85,7 @@ reports/g1/
 reports/g2/
 reports/g7/
 reports/g8/
+reports/u2/
 reports/g11/
 ```
 

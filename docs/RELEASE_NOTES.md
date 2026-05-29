@@ -1,5 +1,17 @@
 # Historial de versiones
 
+## v1.7.0
+
+* Integración completa del Formato U2.
+* Catálogo local CIIU para U2.
+* Validación de fuentes CIUGEN.
+* Generación TXT U2.
+* Generación de plantilla CIUGEN.
+* Validación de plantilla CIUGEN.
+* Exportación CIUGEN.DBF mensual.
+* Integración CIUGEN en desktop para plantillas y exportación DBF.
+* Integración del Reporte U2 en desktop.
+
 ## v1.6.0
 
 * Integración completa del Formato G8.

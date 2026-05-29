@@ -6,7 +6,7 @@ El proyecto reemplaza trabajo manual realizado en herramientas antiguas o emulad
 
 ## Estado actual
 
-Versión actual: `v1.6.0`
+Versión actual: `v1.7.0`
 
 Funcionalidades principales:
 
@@ -27,6 +27,7 @@ Funcionalidades principales:
 | G2 | VEPOEN | Soportado |
 | G7 | COMENE, VENENE, COMNET, TRAENE, VALENE | Soportado |
 | G8 | VEFAME | Soportado |
+| U2 | CIUGEN | Soportado |
 | G11 | CACEHI, CACETE | Soportado |
 
 ## Flujo mensual resumido
@@ -76,6 +77,7 @@ git status
 * [Formato G2](docs/formats/G2.md)
 * [Formato G7](docs/formats/G7.md)
 * [Formato G8](docs/formats/G8.md)
+* [Formato U2](docs/formats/U2.md)
 * [Formato G11](docs/formats/G11.md)
 
 ## Archivos locales no versionados
