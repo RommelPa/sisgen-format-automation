@@ -276,14 +276,8 @@ class MainWindow(QMainWindow):
         root_layout.addWidget(self.tabs)
 
         self.tabs.addTab(self._build_config_tab(), "1. Configuración")
-        self.tabs.addTab(self._build_templates_tab(), "2. Plantillas")
-        self.tabs.addTab(self._build_export_tab(), "3. Exportar DBF")
-        self.tabs.addTab(self._build_g1_tab(), "4. G1")
-        self.tabs.addTab(self._build_g2_tab(), "5. G2")
-        self.tabs.addTab(self._build_g7_tab(), "6. G7")
-        self.tabs.addTab(self._build_g8_tab(), "7. G8")
-        self.tabs.addTab(self._build_u2_tab(), "8. U2")
-        self.tabs.addTab(self._build_g11_tab(), "9. G11")
+        self.tabs.addTab(self._build_prepare_dbf_tab(), "2. Preparar DBF")
+        self.tabs.addTab(self._build_txt_tab(), "3. Generar TXT")
         self.tabs.addTab(self._build_logs_tab(), "Logs")
 
         self.setCentralWidget(root)
@@ -351,6 +345,132 @@ class MainWindow(QMainWindow):
 
         layout.addWidget(config_group)
         layout.addWidget(help_box)
+        layout.addStretch()
+
+        return tab
+
+    def _build_prepare_dbf_tab(self) -> QWidget:
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+
+        title = QLabel("Preparar DBF")
+        title.setStyleSheet("font-size: 18px; font-weight: bold;")
+
+        description = QLabel(
+            "Genera plantillas Excel y exporta DBF mensuales por formato. "
+            "Trabaja un formato a la vez para evitar que un error bloquee todo el flujo."
+        )
+        description.setWordWrap(True)
+
+        templates_group = QGroupBox("1. Generar plantillas Excel")
+        templates_layout = QHBoxLayout(templates_group)
+        templates_layout.addWidget(self.generate_g1_templates_button)
+        templates_layout.addWidget(self.generate_g2_templates_button)
+        templates_layout.addWidget(self.generate_g7_templates_button)
+        templates_layout.addWidget(self.generate_g8_templates_button)
+        templates_layout.addWidget(self.generate_u2_templates_button)
+        templates_layout.addWidget(self.generate_g11_templates_button)
+        templates_layout.addWidget(self.generate_templates_button)
+        templates_layout.addStretch()
+
+        export_group = QGroupBox("2. Exportar DBF")
+        export_layout = QHBoxLayout(export_group)
+        export_layout.addWidget(self.export_g1_dbf_button)
+        export_layout.addWidget(self.export_g2_dbf_button)
+        export_layout.addWidget(self.export_g7_dbf_button)
+        export_layout.addWidget(self.export_g8_dbf_button)
+        export_layout.addWidget(self.export_u2_dbf_button)
+        export_layout.addWidget(self.export_g11_dbf_button)
+        export_layout.addWidget(self.export_dbf_button)
+        export_layout.addStretch()
+
+        note = QLabel(
+            "Entrada: carpeta DBF historicos y carpeta plantillas Excel. "
+            "Salida: carpeta DBF generados."
+        )
+        note.setWordWrap(True)
+        note.setStyleSheet("color: #555;")
+
+        layout.addWidget(title)
+        layout.addWidget(description)
+        layout.addWidget(templates_group)
+        layout.addWidget(export_group)
+        layout.addWidget(note)
+        layout.addStretch()
+
+        return tab
+
+    def _build_txt_tab(self) -> QWidget:
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+
+        title = QLabel("Generar TXT")
+        title.setStyleSheet("font-size: 18px; font-weight: bold;")
+
+        description = QLabel(
+            "Valida fuentes desde la carpeta DBF generados y crea los TXT finales "
+            "en la carpeta TXT generados."
+        )
+        description.setWordWrap(True)
+
+        g1_group = QGroupBox("G1")
+        g1_layout = QHBoxLayout(g1_group)
+        g1_layout.addWidget(QLabel("CENHID + CENTER + DACOCE + COMCEN"))
+        g1_layout.addStretch()
+        g1_layout.addWidget(self.validate_g1_button)
+        g1_layout.addWidget(self.generate_g1_button)
+
+        g2_group = QGroupBox("G2")
+        g2_layout = QHBoxLayout(g2_group)
+        g2_layout.addWidget(QLabel("VEPOEN"))
+        g2_layout.addStretch()
+        g2_layout.addWidget(self.validate_g2_button)
+        g2_layout.addWidget(self.generate_g2_button)
+
+        g7_group = QGroupBox("G7")
+        g7_layout = QHBoxLayout(g7_group)
+        g7_layout.addWidget(QLabel("COMENE + VENENE + COMNET + TRAENE + VALENE"))
+        g7_layout.addStretch()
+        g7_layout.addWidget(self.validate_g7_button)
+        g7_layout.addWidget(self.generate_g7_button)
+
+        g8_group = QGroupBox("G8")
+        g8_layout = QHBoxLayout(g8_group)
+        g8_layout.addWidget(QLabel("VEFAME"))
+        g8_layout.addStretch()
+        g8_layout.addWidget(self.validate_g8_button)
+        g8_layout.addWidget(self.generate_g8_button)
+
+        u2_group = QGroupBox("U2")
+        u2_layout = QHBoxLayout(u2_group)
+        u2_layout.addWidget(QLabel("CIUGEN"))
+        u2_layout.addStretch()
+        u2_layout.addWidget(self.validate_u2_button)
+        u2_layout.addWidget(self.generate_u2_button)
+
+        g11_group = QGroupBox("G11")
+        g11_layout = QHBoxLayout(g11_group)
+        g11_layout.addWidget(QLabel("CACEHI + CACETE"))
+        g11_layout.addStretch()
+        g11_layout.addWidget(self.validate_g11_button)
+        g11_layout.addWidget(self.generate_g11_button)
+
+        note = QLabel(
+            "Antes de generar TXT, exporta los DBF del formato correspondiente. "
+            "La validacion debe quedar sin errores."
+        )
+        note.setWordWrap(True)
+        note.setStyleSheet("color: #555;")
+
+        layout.addWidget(title)
+        layout.addWidget(description)
+        layout.addWidget(g1_group)
+        layout.addWidget(g2_group)
+        layout.addWidget(g7_group)
+        layout.addWidget(g8_group)
+        layout.addWidget(u2_group)
+        layout.addWidget(g11_group)
+        layout.addWidget(note)
         layout.addStretch()
 
         return tab
