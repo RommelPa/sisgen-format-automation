@@ -52,6 +52,7 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
         period: str,
         raw_dir: Path,
         output_dir: Path,
+        templates_dir: Path,
         format_key: str = "ALL",
         cenhid_catalog: Path,
         center_catalog: Path,
@@ -65,6 +66,7 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
         self.period = period
         self.raw_dir = raw_dir
         self.output_dir = output_dir
+        self.templates_dir_path = templates_dir
         self.format_key = format_key.upper().strip()
         self.cenhid_catalog = cenhid_catalog
         self.center_catalog = center_catalog
@@ -76,11 +78,11 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
 
     @property
     def templates_dir(self) -> Path:
-        return self.output_dir / "templates"
+        return self.templates_dir_path
 
     @property
     def output_dbf_dir(self) -> Path:
-        return self.output_dir / "dbf" / self.period
+        return self.output_dir
 
     @property
     def period_label(self) -> str:

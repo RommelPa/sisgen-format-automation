@@ -72,9 +72,8 @@ class G2Worker(QObject, WorkerFileMixin):
                 self.finished.emit("Validación G2 completada.")
                 return
 
-            g2_dir = self.output_dir / "g2"
-            g2_dir.mkdir(parents=True, exist_ok=True)
-            output_path = g2_dir / f"G2_{self.period.replace('-', '_')}.txt"
+            self.output_dir.mkdir(parents=True, exist_ok=True)
+            output_path = self.output_dir / f"G2_{self.period.replace('-', '_')}.txt"
 
             self.log.emit("Generando TXT G2...")
 

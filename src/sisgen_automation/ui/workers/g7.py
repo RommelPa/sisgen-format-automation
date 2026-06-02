@@ -97,9 +97,8 @@ class G7Worker(QObject, WorkerFileMixin):
                 self.finished.emit("Validación G7 completada.")
                 return
 
-            g7_dir = self.output_dir / "g7"
-            g7_dir.mkdir(parents=True, exist_ok=True)
-            output_path = g7_dir / f"G7_{self.period.replace('-', '_')}.txt"
+            self.output_dir.mkdir(parents=True, exist_ok=True)
+            output_path = self.output_dir / f"G7_{self.period.replace('-', '_')}.txt"
 
             self.log.emit("Generando TXT G7...")
 

@@ -84,9 +84,8 @@ class G8Worker(QObject, WorkerFileMixin):
                 self.finished.emit("Validación G8 completada.")
                 return
 
-            g8_dir = self.output_dir / "g8"
-            g8_dir.mkdir(parents=True, exist_ok=True)
-            output_path = g8_dir / f"G8_{self.period.replace('-', '_')}.txt"
+            self.output_dir.mkdir(parents=True, exist_ok=True)
+            output_path = self.output_dir / f"G8_{self.period.replace('-', '_')}.txt"
 
             self.log.emit("Generando TXT G8...")
 

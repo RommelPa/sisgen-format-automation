@@ -70,7 +70,7 @@ class TemplateWorker(QObject, WorkerFileMixin):
         try:
             self._validate_format_key()
 
-            templates_dir = self.output_dir / "templates"
+            templates_dir = self.output_dir
             templates_dir.mkdir(parents=True, exist_ok=True)
 
             period_label = self.period.replace("-", "_")

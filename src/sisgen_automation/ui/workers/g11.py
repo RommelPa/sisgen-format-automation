@@ -79,9 +79,8 @@ class G11Worker(QObject, WorkerFileMixin):
                 self.finished.emit("Validación G11 completada.")
                 return
 
-            g11_dir = self.output_dir / "g11"
-            g11_dir.mkdir(parents=True, exist_ok=True)
-            output_path = g11_dir / f"G11_{self.period.replace('-', '_')}.txt"
+            self.output_dir.mkdir(parents=True, exist_ok=True)
+            output_path = self.output_dir / f"G11_{self.period.replace('-', '_')}.txt"
 
             self.log.emit("Generando TXT G11...")
 

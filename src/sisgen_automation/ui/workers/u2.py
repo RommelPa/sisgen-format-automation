@@ -79,9 +79,8 @@ class U2Worker(QObject, WorkerFileMixin):
                 self.finished.emit("Validación U2 completada.")
                 return
 
-            u2_dir = self.output_dir / "u2"
-            u2_dir.mkdir(parents=True, exist_ok=True)
-            output_path = u2_dir / f"U2_{self.period.replace('-', '_')}.txt"
+            self.output_dir.mkdir(parents=True, exist_ok=True)
+            output_path = self.output_dir / f"U2_{self.period.replace('-', '_')}.txt"
 
             self.log.emit("Generando TXT U2...")
 

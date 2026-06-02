@@ -51,8 +51,9 @@ class MainWindow(QMainWindow):
 
         self.period_input = QLineEdit("2025-12")
         self.raw_dir_input = QLineEdit(str(Path("data/raw")))
-        self.output_dir_input = QLineEdit(str(Path("reports")))
+        self.templates_dir_input = QLineEdit(str(Path("reports/templates")))
         self.report_dbf_dir_input = QLineEdit(str(Path("reports/dbf/2025-12")))
+        self.output_dir_input = QLineEdit(str(Path("reports/txt/2025-12")))
         self.cenhid_catalog_input = QLineEdit(str(Path("config/local/cenhid_units.yaml")))
         self.center_catalog_input = QLineEdit(str(Path("config/local/center_units.yaml")))
         self.u2_catalog_input = QLineEdit(str(Path("config/local/u2_ciiu.yaml")))
@@ -300,12 +301,16 @@ class MainWindow(QMainWindow):
             self._path_row(self.raw_dir_input, self._select_raw_dir),
         )
         form.addRow(
-            "Carpeta de salida:",
-            self._path_row(self.output_dir_input, self._select_output_dir),
+            "Carpeta plantillas Excel:",
+            self._path_row(self.templates_dir_input, self._select_templates_dir),
         )
         form.addRow(
-            "Carpeta DBF para reportes TXT:",
+            "Carpeta DBF generados:",
             self._path_row(self.report_dbf_dir_input, self._select_report_dbf_dir),
+        )
+        form.addRow(
+            "Carpeta TXT generados:",
+            self._path_row(self.output_dir_input, self._select_output_dir),
         )
         form.addRow(
             "Catálogo CENHID:",
@@ -337,9 +342,9 @@ class MainWindow(QMainWindow):
         )
 
         help_box = QLabel(
-            "Configura el periodo, las rutas base y los catálogos locales. "
-            "Usa data/raw como fuente historica para plantillas y exportacion. "
-            "Usa reports/dbf/YYYY-MM como fuente para generar los TXT."
+            "Configura el periodo, las cuatro rutas operativas y los catálogos locales. "
+            "Las carpetas DBF historicos y DBF generados pueden ser la misma ruta. "
+            "Si usas la misma ruta, conserva una copia de seguridad de los DBF base."
         )
         help_box.setWordWrap(True)
         help_box.setStyleSheet("color: #555;")
@@ -375,7 +380,7 @@ class MainWindow(QMainWindow):
         actions_layout.addStretch()
 
         note = QLabel(
-            "Entrada: carpeta DBF historicos. Salida: reports/templates. "
+            "Entrada: carpeta DBF historicos. Salida: carpeta plantillas Excel. "
             "Usa Generar todas solo cuando todos los insumos esten disponibles."
         )
         note.setWordWrap(True)
@@ -414,7 +419,7 @@ class MainWindow(QMainWindow):
         actions_layout.addStretch()
 
         note = QLabel(
-            "Entrada: carpeta DBF historicos + reports/templates. Salida: reports/dbf/YYYY-MM. "
+            "Entrada: carpeta DBF historicos + carpeta plantillas Excel. Salida: carpeta DBF generados. "
             "Usa Exportar todo solo cuando todas las plantillas esten completas."
         )
         note.setWordWrap(True)
@@ -660,7 +665,7 @@ class MainWindow(QMainWindow):
 
     def _handle_exported_dbf_dir(self, path: str) -> None:
         self.report_dbf_dir_input.setText(path)
-        self._append_log(f"Carpeta DBF para reportes TXT actualizada automáticamente: {path}")
+        self._append_log(f"Carpeta DBF generados actualizada automáticamente: {path}")
         self._append_log("Ahora puedes generar G1, G2, G7, G8, U2 y G11 usando los DBF exportados.")
 
     def _connect_events(self) -> None:
@@ -697,6 +702,9 @@ class MainWindow(QMainWindow):
 
     def _select_output_dir(self) -> None:
         self._select_directory(self.output_dir_input)
+
+    def _select_templates_dir(self) -> None:
+        self._select_directory(self.templates_dir_input)
 
     def _select_report_dbf_dir(self) -> None:
         self._select_directory(self.report_dbf_dir_input)
@@ -752,7 +760,7 @@ class MainWindow(QMainWindow):
         self.worker = TemplateWorker(
             period=self.period_input.text().strip(),
             raw_dir=Path(self.raw_dir_input.text().strip()),
-            output_dir=Path(self.output_dir_input.text().strip()),
+            output_dir=Path(self.templates_dir_input.text().strip()),
             format_key=format_key,
             cenhid_catalog=Path(self.cenhid_catalog_input.text().strip()),
             center_catalog=Path(self.center_catalog_input.text().strip()),
@@ -789,7 +797,8 @@ class MainWindow(QMainWindow):
         self.worker = ExportDbfWorker(
             period=self.period_input.text().strip(),
             raw_dir=Path(self.raw_dir_input.text().strip()),
-            output_dir=Path(self.output_dir_input.text().strip()),
+            output_dir=Path(self.report_dbf_dir_input.text().strip()),
+            templates_dir=Path(self.templates_dir_input.text().strip()),
             format_key=format_key,
             cenhid_catalog=Path(self.cenhid_catalog_input.text().strip()),
             center_catalog=Path(self.center_catalog_input.text().strip()),
