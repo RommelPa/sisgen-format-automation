@@ -272,7 +272,7 @@ class MainWindow(QMainWindow):
 
         form.addRow("Periodo YYYY-MM:", self.period_input)
         form.addRow(
-            "Carpeta DBF hist?ricos:",
+            "Carpeta DBF historicos:",
             self._path_row(self.raw_dir_input, self._select_raw_dir),
         )
         form.addRow(
@@ -314,7 +314,7 @@ class MainWindow(QMainWindow):
 
         help_box = QLabel(
             "Configura el periodo, las rutas base y los catálogos locales. "
-            "Usa data/raw como fuente hist?rica para plantillas y exportaci?n. "
+            "Usa data/raw como fuente historica para plantillas y exportacion. "
             "Usa reports/dbf/YYYY-MM como fuente para generar los TXT."
         )
         help_box.setWordWrap(True)
@@ -345,7 +345,7 @@ class MainWindow(QMainWindow):
         actions_layout.addStretch()
 
         note = QLabel(
-            "Entrada: carpeta DBF hist?ricos. Salida: reports/templates. "
+            "Entrada: carpeta DBF historicos. Salida: reports/templates. "
             "CIUGEN, VEPOEN y VEFAME toman automáticamente el último periodo válido del DBF base."
         )
         note.setWordWrap(True)
@@ -377,7 +377,7 @@ class MainWindow(QMainWindow):
         actions_layout.addStretch()
 
         note = QLabel(
-            "Entrada: carpeta DBF hist?ricos + reports/templates. Salida: reports/dbf/YYYY-MM. "
+            "Entrada: carpeta DBF historicos + reports/templates. Salida: reports/dbf/YYYY-MM. "
             "Si una plantilla tiene errores, no se exporta ningún DBF."
         )
         note.setWordWrap(True)
@@ -623,7 +623,7 @@ class MainWindow(QMainWindow):
 
     def _handle_exported_dbf_dir(self, path: str) -> None:
         self.report_dbf_dir_input.setText(path)
-        self._append_log(f"Carpeta DBF para reportes TXT actualizada autom?ticamente: {path}")
+        self._append_log(f"Carpeta DBF para reportes TXT actualizada automáticamente: {path}")
         self._append_log("Ahora puedes generar G1, G2, G7, G8, U2 y G11 usando los DBF exportados.")
 
     def _connect_events(self) -> None:
