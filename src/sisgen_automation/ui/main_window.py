@@ -52,6 +52,7 @@ class MainWindow(QMainWindow):
         self.period_input = QLineEdit("2025-12")
         self.raw_dir_input = QLineEdit(str(Path("data/raw")))
         self.output_dir_input = QLineEdit(str(Path("reports")))
+        self.report_dbf_dir_input = QLineEdit(str(Path("reports/dbf/2025-12")))
         self.cenhid_catalog_input = QLineEdit(str(Path("config/local/cenhid_units.yaml")))
         self.center_catalog_input = QLineEdit(str(Path("config/local/center_units.yaml")))
         self.u2_catalog_input = QLineEdit(str(Path("config/local/u2_ciiu.yaml")))
@@ -271,12 +272,16 @@ class MainWindow(QMainWindow):
 
         form.addRow("Periodo YYYY-MM:", self.period_input)
         form.addRow(
-            "Carpeta DBF base SISGEN:",
+            "Carpeta DBF hist?ricos:",
             self._path_row(self.raw_dir_input, self._select_raw_dir),
         )
         form.addRow(
             "Carpeta de salida:",
             self._path_row(self.output_dir_input, self._select_output_dir),
+        )
+        form.addRow(
+            "Carpeta DBF para reportes TXT:",
+            self._path_row(self.report_dbf_dir_input, self._select_report_dbf_dir),
         )
         form.addRow(
             "Catálogo CENHID:",
@@ -309,8 +314,8 @@ class MainWindow(QMainWindow):
 
         help_box = QLabel(
             "Configura el periodo, las rutas base y los catálogos locales. "
-            "Usa data/raw para crear plantillas y exportar DBF. "
-            "Luego usa reports/dbf/YYYY-MM para generar los TXT."
+            "Usa data/raw como fuente hist?rica para plantillas y exportaci?n. "
+            "Usa reports/dbf/YYYY-MM como fuente para generar los TXT."
         )
         help_box.setWordWrap(True)
         help_box.setStyleSheet("color: #555;")
@@ -340,7 +345,7 @@ class MainWindow(QMainWindow):
         actions_layout.addStretch()
 
         note = QLabel(
-            "Salida: reports/templates. "
+            "Entrada: carpeta DBF hist?ricos. Salida: reports/templates. "
             "CIUGEN, VEPOEN y VEFAME toman automáticamente el último periodo válido del DBF base."
         )
         note.setWordWrap(True)
@@ -372,7 +377,7 @@ class MainWindow(QMainWindow):
         actions_layout.addStretch()
 
         note = QLabel(
-            "Entrada: reports/templates. Salida: reports/dbf/YYYY-MM. "
+            "Entrada: carpeta DBF hist?ricos + reports/templates. Salida: reports/dbf/YYYY-MM. "
             "Si una plantilla tiene errores, no se exporta ningún DBF."
         )
         note.setWordWrap(True)
@@ -617,10 +622,9 @@ class MainWindow(QMainWindow):
         return container
 
     def _handle_exported_dbf_dir(self, path: str) -> None:
-        self.raw_dir_input.setText(path)
-        self._append_log(f"Carpeta DBF actualizada automáticamente: {path}")
+        self.report_dbf_dir_input.setText(path)
+        self._append_log(f"Carpeta DBF para reportes TXT actualizada autom?ticamente: {path}")
         self._append_log("Ahora puedes generar G1, G2, G7, G8, U2 y G11 usando los DBF exportados.")
-
 
     def _connect_events(self) -> None:
         self.validate_g1_button.clicked.connect(lambda: self._start_worker("validate"))
@@ -644,6 +648,9 @@ class MainWindow(QMainWindow):
 
     def _select_output_dir(self) -> None:
         self._select_directory(self.output_dir_input)
+
+    def _select_report_dbf_dir(self) -> None:
+        self._select_directory(self.report_dbf_dir_input)
 
     def _select_cenhid_catalog(self) -> None:
         self._select_file(self.cenhid_catalog_input, "YAML (*.yaml *.yml)")
@@ -769,7 +776,7 @@ class MainWindow(QMainWindow):
         self.worker = G1Worker(
             action=action,
             period=self.period_input.text().strip(),
-            raw_dir=Path(self.raw_dir_input.text().strip()),
+            raw_dir=Path(self.report_dbf_dir_input.text().strip()),
             output_dir=Path(self.output_dir_input.text().strip()),
             cenhid_catalog=Path(self.cenhid_catalog_input.text().strip()),
             center_catalog=Path(self.center_catalog_input.text().strip()),
@@ -801,7 +808,7 @@ class MainWindow(QMainWindow):
         self.worker = G2Worker(
             action=action,
             period=self.period_input.text().strip(),
-            vepoen_path=Path(self.raw_dir_input.text().strip()) / "VEPOEN.DBF",
+            vepoen_path=Path(self.report_dbf_dir_input.text().strip()) / "VEPOEN.DBF",
             output_dir=Path(self.output_dir_input.text().strip()),
             g2_catalog=Path(self.g2_catalog_input.text().strip()),
         )
@@ -832,7 +839,7 @@ class MainWindow(QMainWindow):
         self.worker = G7Worker(
             action=action,
             period=self.period_input.text().strip(),
-            raw_dir=Path(self.raw_dir_input.text().strip()),
+            raw_dir=Path(self.report_dbf_dir_input.text().strip()),
             output_dir=Path(self.output_dir_input.text().strip()),
             g7_catalog=Path(self.g7_catalog_input.text().strip()),
         )
@@ -864,7 +871,7 @@ class MainWindow(QMainWindow):
         self.worker = G8Worker(
             action=action,
             period=self.period_input.text().strip(),
-            raw_dir=Path(self.raw_dir_input.text().strip()),
+            raw_dir=Path(self.report_dbf_dir_input.text().strip()),
             output_dir=Path(self.output_dir_input.text().strip()),
             g8_catalog=Path(self.g8_catalog_input.text().strip()),
         )
@@ -896,7 +903,7 @@ class MainWindow(QMainWindow):
         self.worker = U2Worker(
             action=action,
             period=self.period_input.text().strip(),
-            raw_dir=Path(self.raw_dir_input.text().strip()),
+            raw_dir=Path(self.report_dbf_dir_input.text().strip()),
             output_dir=Path(self.output_dir_input.text().strip()),
             u2_catalog=Path(self.u2_catalog_input.text().strip()),
         )
@@ -927,7 +934,7 @@ class MainWindow(QMainWindow):
         self.worker = G11Worker(
             action=action,
             period=self.period_input.text().strip(),
-            raw_dir=Path(self.raw_dir_input.text().strip()),
+            raw_dir=Path(self.report_dbf_dir_input.text().strip()),
             output_dir=Path(self.output_dir_input.text().strip()),
             g11_catalog=Path(self.g11_catalog_input.text().strip()),
         )
