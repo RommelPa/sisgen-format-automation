@@ -80,7 +80,13 @@ class MainWindow(QMainWindow):
         self.generate_u2_templates_button = QPushButton("Generar U2")
         self.generate_g11_templates_button = QPushButton("Generar G11")
         self.generate_templates_button = QPushButton("Generar todas")
-        self.export_dbf_button = QPushButton("Exportar DBF mensuales")
+        self.export_g1_dbf_button = QPushButton("Exportar G1")
+        self.export_g2_dbf_button = QPushButton("Exportar G2")
+        self.export_g7_dbf_button = QPushButton("Exportar G7")
+        self.export_g8_dbf_button = QPushButton("Exportar G8")
+        self.export_u2_dbf_button = QPushButton("Exportar U2")
+        self.export_g11_dbf_button = QPushButton("Exportar G11")
+        self.export_dbf_button = QPushButton("Exportar todo")
         self.clear_log_button = QPushButton("Limpiar logs")
 
         self.log_output = QTextEdit()
@@ -103,6 +109,12 @@ class MainWindow(QMainWindow):
             self.generate_u2_templates_button,
             self.generate_g11_templates_button,
             self.generate_templates_button,
+            self.export_g1_dbf_button,
+            self.export_g2_dbf_button,
+            self.export_g7_dbf_button,
+            self.export_g8_dbf_button,
+            self.export_u2_dbf_button,
+            self.export_g11_dbf_button,
             self.export_dbf_button,
             self.generate_g1_button,
             self.generate_g2_button,
@@ -385,18 +397,25 @@ class MainWindow(QMainWindow):
         title.setStyleSheet("font-size: 18px; font-weight: bold;")
 
         message = QLabel(
-            "Valida las plantillas Excel completadas y exporta los DBF mensuales del periodo."
+            "Valida y exporta DBF por formato. "
+            "Si un formato falla, puedes trabajar otro sin bloquear todo el flujo."
         )
         message.setWordWrap(True)
 
         actions_group = QGroupBox("Acciones")
         actions_layout = QHBoxLayout(actions_group)
+        actions_layout.addWidget(self.export_g1_dbf_button)
+        actions_layout.addWidget(self.export_g2_dbf_button)
+        actions_layout.addWidget(self.export_g7_dbf_button)
+        actions_layout.addWidget(self.export_g8_dbf_button)
+        actions_layout.addWidget(self.export_u2_dbf_button)
+        actions_layout.addWidget(self.export_g11_dbf_button)
         actions_layout.addWidget(self.export_dbf_button)
         actions_layout.addStretch()
 
         note = QLabel(
             "Entrada: carpeta DBF historicos + reports/templates. Salida: reports/dbf/YYYY-MM. "
-            "Si una plantilla tiene errores, no se exporta ningún DBF."
+            "Usa Exportar todo solo cuando todas las plantillas esten completas."
         )
         note.setWordWrap(True)
         note.setStyleSheet("color: #555;")
@@ -664,7 +683,13 @@ class MainWindow(QMainWindow):
         self.generate_u2_templates_button.clicked.connect(lambda: self._start_template_worker("U2"))
         self.generate_g11_templates_button.clicked.connect(lambda: self._start_template_worker("G11"))
         self.generate_templates_button.clicked.connect(lambda: self._start_template_worker("ALL"))
-        self.export_dbf_button.clicked.connect(self._start_export_dbf_worker)
+        self.export_g1_dbf_button.clicked.connect(lambda: self._start_export_dbf_worker("G1"))
+        self.export_g2_dbf_button.clicked.connect(lambda: self._start_export_dbf_worker("G2"))
+        self.export_g7_dbf_button.clicked.connect(lambda: self._start_export_dbf_worker("G7"))
+        self.export_g8_dbf_button.clicked.connect(lambda: self._start_export_dbf_worker("G8"))
+        self.export_u2_dbf_button.clicked.connect(lambda: self._start_export_dbf_worker("U2"))
+        self.export_g11_dbf_button.clicked.connect(lambda: self._start_export_dbf_worker("G11"))
+        self.export_dbf_button.clicked.connect(lambda: self._start_export_dbf_worker("ALL"))
         self.clear_log_button.clicked.connect(self.log_output.clear)
 
     def _select_raw_dir(self) -> None:
@@ -750,7 +775,7 @@ class MainWindow(QMainWindow):
 
         self.worker_thread.start()
 
-    def _start_export_dbf_worker(self) -> None:
+    def _start_export_dbf_worker(self, format_key: str = "ALL") -> None:
         if self.worker_thread is not None:
             QMessageBox.warning(self, "Proceso en ejecución", "Ya hay un proceso ejecutándose.")
             return
@@ -758,13 +783,14 @@ class MainWindow(QMainWindow):
         self._show_logs_tab()
         self._set_buttons_enabled(False)
         self._append_log("=" * 80)
-        self._append_log("Iniciando exportación de DBF...")
+        self._append_log(f"Iniciando exportacion de DBF ({format_key})...")
 
         self.worker_thread = QThread()
         self.worker = ExportDbfWorker(
             period=self.period_input.text().strip(),
             raw_dir=Path(self.raw_dir_input.text().strip()),
             output_dir=Path(self.output_dir_input.text().strip()),
+            format_key=format_key,
             cenhid_catalog=Path(self.cenhid_catalog_input.text().strip()),
             center_catalog=Path(self.center_catalog_input.text().strip()),
             u2_catalog=Path(self.u2_catalog_input.text().strip()),
@@ -998,6 +1024,12 @@ class MainWindow(QMainWindow):
         self.generate_u2_templates_button.setEnabled(enabled)
         self.generate_g11_templates_button.setEnabled(enabled)
         self.generate_templates_button.setEnabled(enabled)
+        self.export_g1_dbf_button.setEnabled(enabled)
+        self.export_g2_dbf_button.setEnabled(enabled)
+        self.export_g7_dbf_button.setEnabled(enabled)
+        self.export_g8_dbf_button.setEnabled(enabled)
+        self.export_u2_dbf_button.setEnabled(enabled)
+        self.export_g11_dbf_button.setEnabled(enabled)
         self.export_dbf_button.setEnabled(enabled)
         self.validate_g1_button.setEnabled(enabled)
         self.generate_g1_button.setEnabled(enabled)

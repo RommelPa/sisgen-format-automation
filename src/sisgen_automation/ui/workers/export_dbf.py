@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import traceback
 from pathlib import Path
+from typing import Callable
 
 from PySide6.QtCore import QObject, Signal
 
@@ -36,6 +37,9 @@ from sisgen_automation.venene.template_validation import validate_venene_templat
 from sisgen_automation.ui.workers.base import WorkerFileMixin
 
 
+VALID_EXPORT_FORMATS = {"ALL", "G1", "G2", "G7", "G8", "U2", "G11"}
+
+
 class ExportDbfWorker(QObject, WorkerFileMixin):
     finished = Signal(str)
     failed = Signal(str)
@@ -48,6 +52,7 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
         period: str,
         raw_dir: Path,
         output_dir: Path,
+        format_key: str = "ALL",
         cenhid_catalog: Path,
         center_catalog: Path,
         u2_catalog: Path,
@@ -60,6 +65,7 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
         self.period = period
         self.raw_dir = raw_dir
         self.output_dir = output_dir
+        self.format_key = format_key.upper().strip()
         self.cenhid_catalog = cenhid_catalog
         self.center_catalog = center_catalog
         self.u2_catalog = u2_catalog
@@ -68,588 +74,440 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
         self.g8_catalog = g8_catalog
         self.g11_catalog = g11_catalog
 
-    def _validate_all_templates(
-        self,
-        *,
-        cenhid_template: Path,
-        center_template: Path,
-        dacoce_template: Path,
-        comcen_template: Path,
-        ciugen_template: Path,
-        vepoen_template: Path,
-        vefame_template: Path,
-        comene_template: Path,
-        venene_template: Path,
-        comnet_template: Path,
-        traene_template: Path,
-        valene_template: Path,
-        cacehi_template: Path,
-        cacete_template: Path,
-    ) -> None:
-        self.log.emit("Validando todas las plantillas antes de exportar DBF...")
+    @property
+    def templates_dir(self) -> Path:
+        return self.output_dir / "templates"
 
-        cenhid_result = validate_cenhid_template(
-            template_path=cenhid_template,
+    @property
+    def output_dbf_dir(self) -> Path:
+        return self.output_dir / "dbf" / self.period
+
+    @property
+    def period_label(self) -> str:
+        return self.period.replace("-", "_")
+
+    def _selected_formats(self) -> list[str]:
+        if self.format_key not in VALID_EXPORT_FORMATS:
+            valid = ", ".join(sorted(VALID_EXPORT_FORMATS))
+            raise ValueError(f"Formato de exportacion no soportado: {self.format_key}. Validos: {valid}")
+
+        if self.format_key == "ALL":
+            return ["G1", "G2", "G7", "G8", "U2", "G11"]
+
+        return [self.format_key]
+
+    def _template_path(self, name: str) -> Path:
+        return self.templates_dir / f"{name}_{self.period_label}_template.xlsx"
+
+    def _source_path(self, name: str) -> Path:
+        return self.raw_dir / f"{name}.DBF"
+
+    def _log_validation(self, name: str, result: object) -> None:
+        error_count = getattr(result, "error_count", None)
+        if error_count is None:
+            error_count = len(getattr(result, "errors", ()))
+
+        warning_count = getattr(result, "warning_count", None)
+        if warning_count is None:
+            warning_count = len(getattr(result, "warnings", ()))
+
+        self.log.emit(f"{name} validacion: errores={error_count}, advertencias={warning_count}")
+
+    def _has_errors(self, result: object) -> bool:
+        has_errors = getattr(result, "has_errors", None)
+
+        if has_errors is not None:
+            return bool(has_errors)
+
+        return bool(getattr(result, "errors", ()))
+
+    def _iter_issues(self, result: object) -> list[object]:
+        issues = getattr(result, "issues", None)
+        if issues is not None:
+            return list(issues)
+
+        errors = getattr(result, "errors", None)
+        if errors is not None:
+            return list(errors)
+
+        return []
+
+    def _is_error_issue(self, issue: object) -> bool:
+        severity = getattr(issue, "severity", None)
+        value = getattr(severity, "value", severity)
+
+        if value is None:
+            return True
+
+        return str(value) == "ERROR"
+
+    def _issue_location(self, issue: object) -> str:
+        row = getattr(issue, "row", None)
+        return f"fila {row}" if row is not None else "general"
+
+    def _issue_field(self, issue: object) -> str:
+        return str(getattr(issue, "field", "") or "")
+
+    def _issue_message(self, issue: object) -> str:
+        return str(getattr(issue, "message", issue))
+
+    def _issue_value(self, issue: object) -> str:
+        value = getattr(issue, "value", "")
+        return "" if value is None else str(value)
+
+    def _emit_errors(self, name: str, result: object) -> None:
+        for issue in self._iter_issues(result)[:10]:
+            if self._is_error_issue(issue):
+                self.log.emit(
+                    f"ERROR {name} | {self._issue_location(issue)} | "
+                    f"{self._issue_field(issue)} | {self._issue_message(issue)} | "
+                    f"{self._issue_value(issue)}"
+                )
+
+    def _validate_result(self, name: str, result: object) -> bool:
+        self._log_validation(name, result)
+
+        if self._has_errors(result):
+            self._emit_errors(name, result)
+            return False
+
+        return True
+
+    def _export_result(self, name: str, export_call: Callable[[], object]) -> str:
+        self.log.emit(f"Exportando {name}.DBF...")
+        result = export_call()
+        output_path = getattr(result, "output_path", "")
+        appended = getattr(result, "appended_record_count", "")
+        self.log.emit(f"{name} exportado: {output_path} ({appended} registros nuevos)")
+        return name
+
+    def _validate_g1(self) -> bool:
+        for path in [
+            self._source_path("CENHID"),
+            self._source_path("CENTER"),
+            self._source_path("DACOCE"),
+            self._source_path("COMCEN"),
+            self._template_path("CENHID"),
+            self._template_path("CENTER"),
+            self._template_path("DACOCE"),
+            self._template_path("COMCEN"),
+            self.cenhid_catalog,
+            self.center_catalog,
+        ]:
+            self._ensure_file(path)
+
+        results = [
+            ("CENHID", validate_cenhid_template(
+                template_path=self._template_path("CENHID"),
+                period=self.period,
+                catalog_path=self.cenhid_catalog,
+            )),
+            ("CENTER", validate_center_template(
+                template_path=self._template_path("CENTER"),
+                period=self.period,
+                catalog_path=self.center_catalog,
+            )),
+            ("DACOCE", validate_dacoce_template(
+                template_path=self._template_path("DACOCE"),
+                period=self.period,
+            )),
+            ("COMCEN", validate_comcen_template(
+                template_path=self._template_path("COMCEN"),
+                period=self.period,
+                catalog_path=self.center_catalog,
+            )),
+        ]
+
+        return all(self._validate_result(name, result) for name, result in results)
+
+    def _export_g1(self) -> list[str]:
+        exported = []
+
+        exported.append(self._export_result("CENHID", lambda: export_cenhid_dbf(
+            source_dbf_path=self._source_path("CENHID"),
+            template_path=self._template_path("CENHID"),
             period=self.period,
             catalog_path=self.cenhid_catalog,
-        )
-        self.log.emit(
-            f"CENHID validación: errores={len(cenhid_result.errors)}, "
-            f"advertencias={len(cenhid_result.warnings)}"
-        )
-
-        center_result = validate_center_template(
-            template_path=center_template,
+            output_path=self.output_dbf_dir / "CENHID.DBF",
+        )))
+        exported.append(self._export_result("CENTER", lambda: export_center_dbf(
+            source_dbf_path=self._source_path("CENTER"),
+            template_path=self._template_path("CENTER"),
             period=self.period,
             catalog_path=self.center_catalog,
-        )
-        self.log.emit(
-            f"CENTER validación: errores={len(center_result.errors)}, "
-            f"advertencias={len(center_result.warnings)}"
-        )
-
-        dacoce_result = validate_dacoce_template(
-            template_path=dacoce_template,
+            output_path=self.output_dbf_dir / "CENTER.DBF",
+        )))
+        exported.append(self._export_result("DACOCE", lambda: export_dacoce_dbf(
+            source_dbf_path=self._source_path("DACOCE"),
+            template_path=self._template_path("DACOCE"),
             period=self.period,
-        )
-        self.log.emit(
-            f"DACOCE validación: errores={len(dacoce_result.errors)}, "
-            f"advertencias={len(dacoce_result.warnings)}"
-        )
-
-        comcen_result = validate_comcen_template(
-            template_path=comcen_template,
+            output_path=self.output_dbf_dir / "DACOCE.DBF",
+        )))
+        exported.append(self._export_result("COMCEN", lambda: export_comcen_dbf(
+            source_dbf_path=self._source_path("COMCEN"),
+            template_path=self._template_path("COMCEN"),
             period=self.period,
             catalog_path=self.center_catalog,
-        )
-        self.log.emit(
-            f"COMCEN validación: errores={comcen_result.error_count}, "
-            f"advertencias={comcen_result.warning_count}"
-        )
+            output_path=self.output_dbf_dir / "COMCEN.DBF",
+        )))
 
-        ciugen_result = validate_ciugen_template(
-            template_path=ciugen_template,
-            period=self.period,
-            catalog_path=self.u2_catalog,
-        )
-        self.log.emit(
-            f"CIUGEN validación: errores={ciugen_result.error_count}, "
-            f"advertencias={ciugen_result.warning_count}"
-        )
+        return exported
 
-        vepoen_result = validate_vepoen_template(
-            template_path=vepoen_template,
+    def _validate_g2(self) -> bool:
+        for path in [
+            self._source_path("VEPOEN"),
+            self._template_path("VEPOEN"),
+            self.g2_catalog,
+        ]:
+            self._ensure_file(path)
+
+        result = validate_vepoen_template(
+            template_path=self._template_path("VEPOEN"),
             period=self.period,
             catalog_path=self.g2_catalog,
         )
-        self.log.emit(
-            f"VEPOEN validación: errores={vepoen_result.error_count}, "
-            f"advertencias={vepoen_result.warning_count}"
-        )
 
-        vefame_result = validate_vefame_template(
-            template_path=vefame_template,
+        return self._validate_result("VEPOEN", result)
+
+    def _export_g2(self) -> list[str]:
+        return [self._export_result("VEPOEN", lambda: export_vepoen_dbf(
+            source_dbf_path=self._source_path("VEPOEN"),
+            template_path=self._template_path("VEPOEN"),
+            period=self.period,
+            catalog_path=self.g2_catalog,
+            output_path=self.output_dbf_dir / "VEPOEN.DBF",
+        ))]
+
+    def _validate_g7(self) -> bool:
+        for name in ["COMENE", "VENENE", "COMNET", "TRAENE", "VALENE"]:
+            self._ensure_file(self._source_path(name))
+            self._ensure_file(self._template_path(name))
+
+        self._ensure_file(self.g7_catalog)
+
+        results = [
+            ("COMENE", validate_comene_template(
+                template_path=self._template_path("COMENE"),
+                period=self.period,
+                catalog_path=self.g7_catalog,
+            )),
+            ("VENENE", validate_venene_template(
+                template_path=self._template_path("VENENE"),
+                period=self.period,
+                catalog_path=self.g7_catalog,
+            )),
+            ("COMNET", validate_comnet_template(
+                template_path=self._template_path("COMNET"),
+                period=self.period,
+                catalog_path=self.g7_catalog,
+            )),
+            ("TRAENE", validate_traene_template(
+                template_path=self._template_path("TRAENE"),
+                period=self.period,
+                catalog_path=self.g7_catalog,
+            )),
+            ("VALENE", validate_valene_template(
+                template_path=self._template_path("VALENE"),
+                period=self.period,
+                catalog_path=self.g7_catalog,
+            )),
+        ]
+
+        return all(self._validate_result(name, result) for name, result in results)
+
+    def _export_g7(self) -> list[str]:
+        exported = []
+
+        exported.append(self._export_result("COMENE", lambda: export_comene_dbf(
+            source_dbf_path=self._source_path("COMENE"),
+            template_path=self._template_path("COMENE"),
+            period=self.period,
+            catalog_path=self.g7_catalog,
+            output_path=self.output_dbf_dir / "COMENE.DBF",
+        )))
+        exported.append(self._export_result("VENENE", lambda: export_venene_dbf(
+            source_dbf_path=self._source_path("VENENE"),
+            template_path=self._template_path("VENENE"),
+            period=self.period,
+            catalog_path=self.g7_catalog,
+            output_path=self.output_dbf_dir / "VENENE.DBF",
+        )))
+        exported.append(self._export_result("COMNET", lambda: export_comnet_dbf(
+            source_dbf_path=self._source_path("COMNET"),
+            template_path=self._template_path("COMNET"),
+            period=self.period,
+            catalog_path=self.g7_catalog,
+            output_path=self.output_dbf_dir / "COMNET.DBF",
+        )))
+        exported.append(self._export_result("TRAENE", lambda: export_traene_dbf(
+            source_dbf_path=self._source_path("TRAENE"),
+            template_path=self._template_path("TRAENE"),
+            period=self.period,
+            catalog_path=self.g7_catalog,
+            output_path=self.output_dbf_dir / "TRAENE.DBF",
+        )))
+        exported.append(self._export_result("VALENE", lambda: export_valene_dbf(
+            source_dbf_path=self._source_path("VALENE"),
+            template_path=self._template_path("VALENE"),
+            period=self.period,
+            catalog_path=self.g7_catalog,
+            output_path=self.output_dbf_dir / "VALENE.DBF",
+        )))
+
+        return exported
+
+    def _validate_g8(self) -> bool:
+        for path in [
+            self._source_path("VEFAME"),
+            self._template_path("VEFAME"),
+            self.g8_catalog,
+        ]:
+            self._ensure_file(path)
+
+        result = validate_vefame_template(
+            template_path=self._template_path("VEFAME"),
             period=self.period,
             catalog_path=self.g8_catalog,
         )
-        self.log.emit(
-            f"VEFAME validación: errores={vefame_result.error_count}, "
-            f"advertencias={vefame_result.warning_count}"
-        )
 
-        comene_result = validate_comene_template(
-            template_path=comene_template,
+        return self._validate_result("VEFAME", result)
+
+    def _export_g8(self) -> list[str]:
+        return [self._export_result("VEFAME", lambda: export_vefame_dbf(
+            source_dbf_path=self._source_path("VEFAME"),
+            template_path=self._template_path("VEFAME"),
             period=self.period,
-            catalog_path=self.g7_catalog,
-        )
-        self.log.emit(
-            f"COMENE validación: errores={comene_result.error_count}, "
-            f"advertencias={comene_result.warning_count}"
-        )
+            catalog_path=self.g8_catalog,
+            output_path=self.output_dbf_dir / "VEFAME.DBF",
+        ))]
 
-        venene_result = validate_venene_template(
-            template_path=venene_template,
+    def _validate_u2(self) -> bool:
+        for path in [
+            self._source_path("CIUGEN"),
+            self._template_path("CIUGEN"),
+            self.u2_catalog,
+        ]:
+            self._ensure_file(path)
+
+        result = validate_ciugen_template(
+            template_path=self._template_path("CIUGEN"),
             period=self.period,
-            catalog_path=self.g7_catalog,
-        )
-        self.log.emit(
-            f"VENENE validación: errores={venene_result.error_count}, "
-            f"advertencias={venene_result.warning_count}"
+            catalog_path=self.u2_catalog,
         )
 
-        comnet_result = validate_comnet_template(
-            template_path=comnet_template,
+        return self._validate_result("CIUGEN", result)
+
+    def _export_u2(self) -> list[str]:
+        return [self._export_result("CIUGEN", lambda: export_ciugen_dbf(
+            source_dbf_path=self._source_path("CIUGEN"),
+            template_path=self._template_path("CIUGEN"),
             period=self.period,
-            catalog_path=self.g7_catalog,
-        )
-        self.log.emit(
-            f"COMNET validación: errores={comnet_result.error_count}, "
-            f"advertencias={comnet_result.warning_count}"
-        )
+            catalog_path=self.u2_catalog,
+            output_path=self.output_dbf_dir / "CIUGEN.DBF",
+        ))]
 
-        traene_result = validate_traene_template(
-            template_path=traene_template,
-            period=self.period,
-            catalog_path=self.g7_catalog,
-        )
-        self.log.emit(
-            f"TRAENE validación: errores={traene_result.error_count}, "
-            f"advertencias={traene_result.warning_count}"
-        )
+    def _validate_g11(self) -> bool:
+        for name in ["CACEHI", "CACETE"]:
+            self._ensure_file(self._source_path(name))
+            self._ensure_file(self._template_path(name))
 
-        valene_result = validate_valene_template(
-            template_path=valene_template,
-            period=self.period,
-            catalog_path=self.g7_catalog,
-        )
-        self.log.emit(
-            f"VALENE validación: errores={valene_result.error_count}, "
-            f"advertencias={valene_result.warning_count}"
-        )
+        self._ensure_file(self.g11_catalog)
 
-        cacehi_result = validate_cacehi_template(
-            template_path=cacehi_template,
-            period=self.period,
-            catalog_path=self.g11_catalog,
-        )
-        self.log.emit(
-            f"CACEHI validación: errores={cacehi_result.error_count}, "
-            f"advertencias={cacehi_result.warning_count}"
-        )
+        results = [
+            ("CACEHI", validate_cacehi_template(
+                template_path=self._template_path("CACEHI"),
+                period=self.period,
+                catalog_path=self.g11_catalog,
+            )),
+            ("CACETE", validate_cacete_template(
+                template_path=self._template_path("CACETE"),
+                period=self.period,
+                catalog_path=self.g11_catalog,
+            )),
+        ]
 
-        cacete_result = validate_cacete_template(
-            template_path=cacete_template,
+        return all(self._validate_result(name, result) for name, result in results)
+
+    def _export_g11(self) -> list[str]:
+        exported = []
+
+        exported.append(self._export_result("CACEHI", lambda: export_cacehi_dbf(
+            source_dbf_path=self._source_path("CACEHI"),
+            template_path=self._template_path("CACEHI"),
             period=self.period,
             catalog_path=self.g11_catalog,
-        )
-        self.log.emit(
-            f"CACETE validación: errores={cacete_result.error_count}, "
-            f"advertencias={cacete_result.warning_count}"
-        )
+            output_path=self.output_dbf_dir / "CACEHI.DBF",
+        )))
+        exported.append(self._export_result("CACETE", lambda: export_cacete_dbf(
+            source_dbf_path=self._source_path("CACETE"),
+            template_path=self._template_path("CACETE"),
+            period=self.period,
+            catalog_path=self.g11_catalog,
+            output_path=self.output_dbf_dir / "CACETE.DBF",
+        )))
 
-        def _issue_location(issue: object) -> str:
-            row = getattr(issue, "row", None)
-            return f"fila {row}" if row is not None else "general"
+        return exported
 
-        def _issue_field(issue: object) -> str:
-            return str(getattr(issue, "field", "") or "")
+    def _validate_format(self, format_key: str) -> bool:
+        validators = {
+            "G1": self._validate_g1,
+            "G2": self._validate_g2,
+            "G7": self._validate_g7,
+            "G8": self._validate_g8,
+            "U2": self._validate_u2,
+            "G11": self._validate_g11,
+        }
 
-        def _issue_message(issue: object) -> str:
-            return str(getattr(issue, "message", issue))
+        self.log.emit(f"Validando plantillas {format_key}...")
+        return validators[format_key]()
 
-        def _issue_value(issue: object) -> str:
-            value = getattr(issue, "value", "")
-            return "" if value is None else str(value)
+    def _export_format(self, format_key: str) -> list[str]:
+        exporters = {
+            "G1": self._export_g1,
+            "G2": self._export_g2,
+            "G7": self._export_g7,
+            "G8": self._export_g8,
+            "U2": self._export_u2,
+            "G11": self._export_g11,
+        }
 
-        def _is_error_issue(issue: object) -> bool:
-            severity = getattr(issue, "severity", None)
-            value = getattr(severity, "value", severity)
-            return str(value) == "ERROR"
-
-
-        has_errors = (
-            cenhid_result.has_errors
-            or center_result.has_errors
-            or dacoce_result.has_errors
-            or comcen_result.has_errors
-            or ciugen_result.has_errors
-            or vepoen_result.has_errors
-            or vefame_result.has_errors
-            or comene_result.has_errors
-            or venene_result.has_errors
-            or comnet_result.has_errors
-            or traene_result.has_errors
-            or valene_result.has_errors
-            or cacehi_result.has_errors
-            or cacete_result.has_errors
-        )
-
-        if not has_errors:
-            self.log.emit("Todas las plantillas están listas para exportar.")
-            return
-
-        for issue in cenhid_result.errors[:10]:
-            self.log.emit(
-                f"ERROR CENHID | {_issue_location(issue)} | "
-                f"{_issue_field(issue)} | {_issue_message(issue)} | {_issue_value(issue)}"
-            )
-
-        for issue in center_result.errors[:10]:
-            self.log.emit(
-                f"ERROR CENTER | {_issue_location(issue)} | "
-                f"{_issue_field(issue)} | {_issue_message(issue)} | {_issue_value(issue)}"
-            )
-
-        for issue in dacoce_result.errors[:10]:
-            self.log.emit(
-                f"ERROR DACOCE | {_issue_location(issue)} | "
-                f"{_issue_field(issue)} | {_issue_message(issue)} | {_issue_value(issue)}"
-            )
-
-        for issue in comcen_result.issues[:10]:
-            if _is_error_issue(issue):
-                self.log.emit(
-                    f"ERROR COMCEN | {_issue_location(issue)} | "
-                    f"{_issue_field(issue)} | {_issue_message(issue)} | {_issue_value(issue)}"
-                )
-
-        for issue in ciugen_result.issues[:10]:
-            if _is_error_issue(issue):
-                self.log.emit(
-                    f"ERROR CIUGEN | {_issue_location(issue)} | "
-                    f"{_issue_field(issue)} | {_issue_message(issue)} | {_issue_value(issue)}"
-                )
-
-        for issue in vepoen_result.issues[:10]:
-            if _is_error_issue(issue):
-                self.log.emit(
-                    f"ERROR VEPOEN | {_issue_location(issue)} | "
-                    f"{_issue_field(issue)} | {_issue_message(issue)} | {_issue_value(issue)}"
-                )
-
-        for issue in vefame_result.issues[:10]:
-            if _is_error_issue(issue):
-                self.log.emit(
-                    f"ERROR VEFAME | {_issue_location(issue)} | "
-                    f"{_issue_field(issue)} | {_issue_message(issue)} | {_issue_value(issue)}"
-                )
-
-        for issue in comene_result.issues[:10]:
-            if _is_error_issue(issue):
-                self.log.emit(
-                    f"ERROR COMENE | {_issue_location(issue)} | "
-                    f"{_issue_field(issue)} | {_issue_message(issue)} | {_issue_value(issue)}"
-                )
-
-        for issue in venene_result.issues[:10]:
-            if _is_error_issue(issue):
-                self.log.emit(
-                    f"ERROR VENENE | {_issue_location(issue)} | "
-                    f"{_issue_field(issue)} | {_issue_message(issue)} | {_issue_value(issue)}"
-                )
-
-        for issue in comnet_result.issues[:10]:
-            if _is_error_issue(issue):
-                self.log.emit(
-                    f"ERROR COMNET | {_issue_location(issue)} | "
-                    f"{_issue_field(issue)} | {_issue_message(issue)} | {_issue_value(issue)}"
-                )
-
-        for issue in traene_result.issues[:10]:
-            if _is_error_issue(issue):
-                self.log.emit(
-                    f"ERROR TRAENE | {_issue_location(issue)} | "
-                    f"{_issue_field(issue)} | {_issue_message(issue)} | {_issue_value(issue)}"
-                )
-
-        for issue in valene_result.issues[:10]:
-            if _is_error_issue(issue):
-                self.log.emit(
-                    f"ERROR VALENE | {_issue_location(issue)} | "
-                    f"{_issue_field(issue)} | {_issue_message(issue)} | {_issue_value(issue)}"
-                )
-
-        for issue in cacehi_result.issues[:10]:
-            if _is_error_issue(issue):
-                self.log.emit(
-                    f"ERROR CACEHI | {_issue_location(issue)} | "
-                    f"{_issue_field(issue)} | {_issue_message(issue)} | {_issue_value(issue)}"
-                )
-
-        for issue in cacete_result.issues[:10]:
-            if _is_error_issue(issue):
-                self.log.emit(
-                    f"ERROR CACETE | {_issue_location(issue)} | "
-                    f"{_issue_field(issue)} | {_issue_message(issue)} | {_issue_value(issue)}"
-                )
-
-        raise ValueError(
-            "Una o más plantillas tienen errores. No se exportó ningún DBF."
-        )
+        self.log.emit(f"Exportando DBF {format_key}...")
+        return exporters[format_key]()
 
     def run(self) -> None:
         try:
-            period_label = self.period.replace("-", "_")
-
-            source_cenhid = self.raw_dir / "CENHID.DBF"
-            source_center = self.raw_dir / "CENTER.DBF"
-            source_dacoce = self.raw_dir / "DACOCE.DBF"
-            source_comcen = self.raw_dir / "COMCEN.DBF"
-            source_ciugen = self.raw_dir / "CIUGEN.DBF"
-            source_vepoen = self.raw_dir / "VEPOEN.DBF"
-            source_vefame = self.raw_dir / "VEFAME.DBF"
-            source_comene = self.raw_dir / "COMENE.DBF"
-            source_venene = self.raw_dir / "VENENE.DBF"
-            source_comnet = self.raw_dir / "COMNET.DBF"
-            source_traene = self.raw_dir / "TRAENE.DBF"
-            source_valene = self.raw_dir / "VALENE.DBF"
-            source_cacehi = self.raw_dir / "CACEHI.DBF"
-            source_cacete = self.raw_dir / "CACETE.DBF"
-
-            templates_dir = self.output_dir / "templates"
-            output_dbf_dir = self.output_dir / "dbf" / self.period
-
-            cenhid_template = templates_dir / f"CENHID_{period_label}_template.xlsx"
-            center_template = templates_dir / f"CENTER_{period_label}_template.xlsx"
-            dacoce_template = templates_dir / f"DACOCE_{period_label}_template.xlsx"
-            comcen_template = templates_dir / f"COMCEN_{period_label}_template.xlsx"
-            ciugen_template = templates_dir / f"CIUGEN_{period_label}_template.xlsx"
-            vepoen_template = templates_dir / f"VEPOEN_{period_label}_template.xlsx"
-            vefame_template = templates_dir / f"VEFAME_{period_label}_template.xlsx"
-            comene_template = templates_dir / f"COMENE_{period_label}_template.xlsx"
-            venene_template = templates_dir / f"VENENE_{period_label}_template.xlsx"
-            comnet_template = templates_dir / f"COMNET_{period_label}_template.xlsx"
-            traene_template = templates_dir / f"TRAENE_{period_label}_template.xlsx"
-            valene_template = templates_dir / f"VALENE_{period_label}_template.xlsx"
-            cacehi_template = templates_dir / f"CACEHI_{period_label}_template.xlsx"
-            cacete_template = templates_dir / f"CACETE_{period_label}_template.xlsx"
-
-            for path in [
-                source_cenhid,
-                source_center,
-                source_dacoce,
-                source_comcen,
-                source_ciugen,
-                source_vepoen,
-                source_vefame,
-                source_comene,
-                source_venene,
-                source_comnet,
-                source_traene,
-                source_valene,
-                source_cacehi,
-                source_cacete,
-                cenhid_template,
-                center_template,
-                dacoce_template,
-                comcen_template,
-                ciugen_template,
-                vepoen_template,
-                vefame_template,
-                comene_template,
-                venene_template,
-                comnet_template,
-                traene_template,
-                valene_template,
-                cacehi_template,
-                cacete_template,
-                self.cenhid_catalog,
-                self.center_catalog,
-                self.u2_catalog,
-                self.g2_catalog,
-                self.g7_catalog,
-                self.g8_catalog,
-                self.g11_catalog,
-            ]:
-                self._ensure_file(path)
+            selected_formats = self._selected_formats()
 
             self.log.emit(f"Periodo: {self.period}")
-            self.log.emit(f"Carpeta de plantillas: {templates_dir}")
-            self.log.emit(f"Carpeta DBF exportados: {output_dbf_dir}")
+            self.log.emit(f"Formato: {self.format_key}")
+            self.log.emit(f"Carpeta DBF historicos: {self.raw_dir}")
+            self.log.emit(f"Carpeta de plantillas: {self.templates_dir}")
+            self.log.emit(f"Carpeta DBF exportados: {self.output_dbf_dir}")
 
-            self._validate_all_templates(
-                cenhid_template=cenhid_template,
-                center_template=center_template,
-                dacoce_template=dacoce_template,
-                comcen_template=comcen_template,
-                ciugen_template=ciugen_template,
-                vepoen_template=vepoen_template,
-                vefame_template=vefame_template,
-                comene_template=comene_template,
-                venene_template=venene_template,
-                comnet_template=comnet_template,
-                traene_template=traene_template,
-                valene_template=valene_template,
-                cacehi_template=cacehi_template,
-                cacete_template=cacete_template,
-            )
+            has_errors = False
+            for format_key in selected_formats:
+                if not self._validate_format(format_key):
+                    has_errors = True
 
-            output_dbf_dir.mkdir(parents=True, exist_ok=True)
+            if has_errors:
+                raise ValueError(
+                    "Una o mas plantillas del formato seleccionado tienen errores. "
+                    "No se exporto ningun DBF para este proceso."
+                )
 
-            self.log.emit("Exportando CENHID.DBF...")
-            cenhid_result = export_cenhid_dbf(
-                source_dbf_path=source_cenhid,
-                template_path=cenhid_template,
-                period=self.period,
-                catalog_path=self.cenhid_catalog,
-                output_path=output_dbf_dir / "CENHID.DBF",
-            )
-            self.log.emit(
-                f"CENHID exportado: {cenhid_result.output_path} "
-                f"({cenhid_result.appended_record_count} registros nuevos)"
-            )
+            self.output_dbf_dir.mkdir(parents=True, exist_ok=True)
 
-            self.log.emit("Exportando CENTER.DBF...")
-            center_result = export_center_dbf(
-                source_dbf_path=source_center,
-                template_path=center_template,
-                period=self.period,
-                catalog_path=self.center_catalog,
-                output_path=output_dbf_dir / "CENTER.DBF",
-            )
-            self.log.emit(
-                f"CENTER exportado: {center_result.output_path} "
-                f"({center_result.appended_record_count} registros nuevos)"
-            )
+            exported: list[str] = []
+            for format_key in selected_formats:
+                exported.extend(self._export_format(format_key))
 
-            self.log.emit("Exportando DACOCE.DBF...")
-            dacoce_result = export_dacoce_dbf(
-                source_dbf_path=source_dacoce,
-                template_path=dacoce_template,
-                period=self.period,
-                output_path=output_dbf_dir / "DACOCE.DBF",
-            )
-            self.log.emit(
-                f"DACOCE exportado: {dacoce_result.output_path} "
-                f"({dacoce_result.appended_record_count} registros nuevos)"
-            )
+            self.exported_dir.emit(str(self.output_dbf_dir))
 
-            self.log.emit("Exportando COMCEN.DBF...")
-            comcen_result = export_comcen_dbf(
-                source_dbf_path=source_comcen,
-                template_path=comcen_template,
-                period=self.period,
-                catalog_path=self.center_catalog,
-                output_path=output_dbf_dir / "COMCEN.DBF",
+            exported_text = ", ".join(exported) if exported else "ninguno"
+            self.finished.emit(
+                f"DBF exportados correctamente en: {self.output_dbf_dir}. "
+                f"Archivos: {exported_text}"
             )
-            self.log.emit(
-                f"COMCEN exportado: {comcen_result.output_path} "
-                f"({comcen_result.appended_record_count} registros nuevos)"
-            )
-
-            self.log.emit("Exportando CIUGEN.DBF...")
-            ciugen_result = export_ciugen_dbf(
-                source_dbf_path=source_ciugen,
-                template_path=ciugen_template,
-                period=self.period,
-                catalog_path=self.u2_catalog,
-                output_path=output_dbf_dir / "CIUGEN.DBF",
-            )
-            self.log.emit(
-                f"CIUGEN exportado: {ciugen_result.output_path} "
-                f"({ciugen_result.appended_record_count} registros nuevos)"
-            )
-
-            self.log.emit("Exportando VEPOEN.DBF...")
-            vepoen_result = export_vepoen_dbf(
-                source_dbf_path=source_vepoen,
-                template_path=vepoen_template,
-                period=self.period,
-                catalog_path=self.g2_catalog,
-                output_path=output_dbf_dir / "VEPOEN.DBF",
-            )
-            self.log.emit(
-                f"VEPOEN exportado: {vepoen_result.output_path} "
-                f"({vepoen_result.appended_record_count} registros nuevos)"
-            )
-
-            self.log.emit("Exportando VEFAME.DBF...")
-            vefame_result = export_vefame_dbf(
-                source_dbf_path=source_vefame,
-                template_path=vefame_template,
-                period=self.period,
-                catalog_path=self.g8_catalog,
-                output_path=output_dbf_dir / "VEFAME.DBF",
-            )
-            self.log.emit(
-                f"VEFAME exportado: {vefame_result.output_path} "
-                f"({vefame_result.appended_record_count} registros nuevos)"
-            )
-
-            self.log.emit("Exportando COMENE.DBF...")
-            comene_result = export_comene_dbf(
-                source_dbf_path=source_comene,
-                template_path=comene_template,
-                period=self.period,
-                catalog_path=self.g7_catalog,
-                output_path=output_dbf_dir / "COMENE.DBF",
-            )
-            self.log.emit(
-                f"COMENE exportado: {comene_result.output_path} "
-                f"({comene_result.appended_record_count} registros nuevos)"
-            )
-
-            self.log.emit("Exportando VENENE.DBF...")
-            venene_result = export_venene_dbf(
-                source_dbf_path=source_venene,
-                template_path=venene_template,
-                period=self.period,
-                catalog_path=self.g7_catalog,
-                output_path=output_dbf_dir / "VENENE.DBF",
-            )
-            self.log.emit(
-                f"VENENE exportado: {venene_result.output_path} "
-                f"({venene_result.appended_record_count} registros nuevos)"
-            )
-
-            self.log.emit("Exportando COMNET.DBF...")
-            comnet_result = export_comnet_dbf(
-                source_dbf_path=source_comnet,
-                template_path=comnet_template,
-                period=self.period,
-                catalog_path=self.g7_catalog,
-                output_path=output_dbf_dir / "COMNET.DBF",
-            )
-            self.log.emit(
-                f"COMNET exportado: {comnet_result.output_path} "
-                f"({comnet_result.appended_record_count} registros nuevos)"
-            )
-
-            self.log.emit("Exportando TRAENE.DBF...")
-            traene_result = export_traene_dbf(
-                source_dbf_path=source_traene,
-                template_path=traene_template,
-                period=self.period,
-                catalog_path=self.g7_catalog,
-                output_path=output_dbf_dir / "TRAENE.DBF",
-            )
-            self.log.emit(
-                f"TRAENE exportado: {traene_result.output_path} "
-                f"({traene_result.appended_record_count} registros nuevos)"
-            )
-
-            self.log.emit("Exportando VALENE.DBF...")
-            valene_result = export_valene_dbf(
-                source_dbf_path=source_valene,
-                template_path=valene_template,
-                period=self.period,
-                catalog_path=self.g7_catalog,
-                output_path=output_dbf_dir / "VALENE.DBF",
-            )
-            self.log.emit(
-                f"VALENE exportado: {valene_result.output_path} "
-                f"({valene_result.appended_record_count} registros nuevos)"
-            )
-
-            self.log.emit("Exportando CACEHI.DBF...")
-            cacehi_result = export_cacehi_dbf(
-                source_dbf_path=source_cacehi,
-                template_path=cacehi_template,
-                period=self.period,
-                catalog_path=self.g11_catalog,
-                output_path=output_dbf_dir / "CACEHI.DBF",
-            )
-            self.log.emit(
-                f"CACEHI exportado: {cacehi_result.output_path} "
-                f"({cacehi_result.appended_record_count} registros nuevos)"
-            )
-
-            self.log.emit("Exportando CACETE.DBF...")
-            cacete_result = export_cacete_dbf(
-                source_dbf_path=source_cacete,
-                template_path=cacete_template,
-                period=self.period,
-                catalog_path=self.g11_catalog,
-                output_path=output_dbf_dir / "CACETE.DBF",
-            )
-            self.log.emit(
-                f"CACETE exportado: {cacete_result.output_path} "
-                f"({cacete_result.appended_record_count} registros nuevos)"
-            )
-
-            self.exported_dir.emit(str(output_dbf_dir))
-
-            self.finished.emit(f"DBF exportados correctamente en: {output_dbf_dir}")
         except Exception as error:  # noqa: BLE001
             details = traceback.format_exc()
-            self.failed.emit(f"{error}\n\nDetalle técnico:\n{details}")
+            self.failed.emit(f"{error}\\n\\nDetalle tecnico:\\n{details}")
