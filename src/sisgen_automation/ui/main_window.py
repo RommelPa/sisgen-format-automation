@@ -73,7 +73,13 @@ class MainWindow(QMainWindow):
         self.generate_u2_button = QPushButton("Generar TXT U2")
         self.validate_g11_button = QPushButton("Validar fuentes G11")
         self.generate_g11_button = QPushButton("Generar TXT G11")
-        self.generate_templates_button = QPushButton("Generar plantillas mensuales")
+        self.generate_g1_templates_button = QPushButton("Generar G1")
+        self.generate_g2_templates_button = QPushButton("Generar G2")
+        self.generate_g7_templates_button = QPushButton("Generar G7")
+        self.generate_g8_templates_button = QPushButton("Generar G8")
+        self.generate_u2_templates_button = QPushButton("Generar U2")
+        self.generate_g11_templates_button = QPushButton("Generar G11")
+        self.generate_templates_button = QPushButton("Generar todas")
         self.export_dbf_button = QPushButton("Exportar DBF mensuales")
         self.clear_log_button = QPushButton("Limpiar logs")
 
@@ -90,6 +96,12 @@ class MainWindow(QMainWindow):
 
     def _apply_visual_style(self) -> None:
         primary_buttons = [
+            self.generate_g1_templates_button,
+            self.generate_g2_templates_button,
+            self.generate_g7_templates_button,
+            self.generate_g8_templates_button,
+            self.generate_u2_templates_button,
+            self.generate_g11_templates_button,
             self.generate_templates_button,
             self.export_dbf_button,
             self.generate_g1_button,
@@ -334,19 +346,25 @@ class MainWindow(QMainWindow):
         title.setStyleSheet("font-size: 18px; font-weight: bold;")
 
         message = QLabel(
-            "Genera todas las plantillas Excel del periodo configurado. "
-            "Después completa manualmente los campos editables en Excel."
+            "Genera plantillas Excel por formato. "
+            "Si un formato falla, los demás no quedan bloqueados."
         )
         message.setWordWrap(True)
 
         actions_group = QGroupBox("Acciones")
         actions_layout = QHBoxLayout(actions_group)
+        actions_layout.addWidget(self.generate_g1_templates_button)
+        actions_layout.addWidget(self.generate_g2_templates_button)
+        actions_layout.addWidget(self.generate_g7_templates_button)
+        actions_layout.addWidget(self.generate_g8_templates_button)
+        actions_layout.addWidget(self.generate_u2_templates_button)
+        actions_layout.addWidget(self.generate_g11_templates_button)
         actions_layout.addWidget(self.generate_templates_button)
         actions_layout.addStretch()
 
         note = QLabel(
             "Entrada: carpeta DBF historicos. Salida: reports/templates. "
-            "CIUGEN, VEPOEN y VEFAME toman automáticamente el último periodo válido del DBF base."
+            "Usa Generar todas solo cuando todos los insumos esten disponibles."
         )
         note.setWordWrap(True)
         note.setStyleSheet("color: #555;")
@@ -639,7 +657,13 @@ class MainWindow(QMainWindow):
         self.generate_u2_button.clicked.connect(lambda: self._start_u2_worker("generate"))
         self.validate_g11_button.clicked.connect(lambda: self._start_g11_worker("validate"))
         self.generate_g11_button.clicked.connect(lambda: self._start_g11_worker("generate"))
-        self.generate_templates_button.clicked.connect(self._start_template_worker)
+        self.generate_g1_templates_button.clicked.connect(lambda: self._start_template_worker("G1"))
+        self.generate_g2_templates_button.clicked.connect(lambda: self._start_template_worker("G2"))
+        self.generate_g7_templates_button.clicked.connect(lambda: self._start_template_worker("G7"))
+        self.generate_g8_templates_button.clicked.connect(lambda: self._start_template_worker("G8"))
+        self.generate_u2_templates_button.clicked.connect(lambda: self._start_template_worker("U2"))
+        self.generate_g11_templates_button.clicked.connect(lambda: self._start_template_worker("G11"))
+        self.generate_templates_button.clicked.connect(lambda: self._start_template_worker("ALL"))
         self.export_dbf_button.clicked.connect(self._start_export_dbf_worker)
         self.clear_log_button.clicked.connect(self.log_output.clear)
 
@@ -689,7 +713,7 @@ class MainWindow(QMainWindow):
     def _show_logs_tab(self) -> None:
         self.tabs.setCurrentIndex(self.tabs.count() - 1)
 
-    def _start_template_worker(self) -> None:
+    def _start_template_worker(self, format_key: str = "ALL") -> None:
         if self.worker_thread is not None:
             QMessageBox.warning(self, "Proceso en ejecución", "Ya hay un proceso ejecutándose.")
             return
@@ -697,13 +721,14 @@ class MainWindow(QMainWindow):
         self._show_logs_tab()
         self._set_buttons_enabled(False)
         self._append_log("=" * 80)
-        self._append_log("Iniciando generación de plantillas...")
+        self._append_log(f"Iniciando generación de plantillas ({format_key})...")
 
         self.worker_thread = QThread()
         self.worker = TemplateWorker(
             period=self.period_input.text().strip(),
             raw_dir=Path(self.raw_dir_input.text().strip()),
             output_dir=Path(self.output_dir_input.text().strip()),
+            format_key=format_key,
             cenhid_catalog=Path(self.cenhid_catalog_input.text().strip()),
             center_catalog=Path(self.center_catalog_input.text().strip()),
             u2_catalog=Path(self.u2_catalog_input.text().strip()),
@@ -966,6 +991,12 @@ class MainWindow(QMainWindow):
         self._set_buttons_enabled(True)
 
     def _set_buttons_enabled(self, enabled: bool) -> None:
+        self.generate_g1_templates_button.setEnabled(enabled)
+        self.generate_g2_templates_button.setEnabled(enabled)
+        self.generate_g7_templates_button.setEnabled(enabled)
+        self.generate_g8_templates_button.setEnabled(enabled)
+        self.generate_u2_templates_button.setEnabled(enabled)
+        self.generate_g11_templates_button.setEnabled(enabled)
         self.generate_templates_button.setEnabled(enabled)
         self.export_dbf_button.setEnabled(enabled)
         self.validate_g1_button.setEnabled(enabled)
