@@ -18,34 +18,60 @@ SISGEN-Format-Automation.exe
 
 ## 2. Configurar parámetros
 
-En la pestaña de configuración, revisar:
+En la pestaña `Configuración`, revisar:
 
 ```text
 Periodo: YYYY-MM
-Carpeta DBF base: data/raw
-Carpeta de salida: reports
+Carpeta DBF históricos: data/raw
+Carpeta plantillas Excel: reports/templates
+Carpeta DBF generados: reports/dbf/YYYY-MM
+Carpeta TXT generados: reports/txt/YYYY-MM
 Catálogos locales: config/local/*.yaml
 ```
 
-Para reportes generados desde DBF exportados, cambiar la carpeta DBF base a:
+Las rutas anteriores son sugeridas. La interfaz permite cambiarlas libremente.
+
+La carpeta DBF históricos y la carpeta DBF generados pueden ser la misma si el flujo operativo lo requiere.
+
+La herramienta no sube ni versiona DBF reales, plantillas generadas ni TXT generados.
+
+## 3. Preparar DBF
+
+Usar la pestaña `Preparar DBF`.
+
+Esta pestaña concentra dos pasos:
 
 ```text
-reports/dbf/YYYY-MM
+1. Generar plantillas Excel.
+2. Exportar DBF mensuales.
 ```
 
-## 3. Generar plantillas
-
-Usar la pestaña `Plantillas`.
-
-La aplicación genera archivos Excel mensuales en:
+Ambas acciones se ejecutan por formato:
 
 ```text
-reports/templates/
+G1
+G2
+G7
+G8
+U2
+G11
+```
+
+También existen botones para ejecutar todos los formatos, pero se recomienda usarlos solo cuando todos los insumos estén disponibles.
+
+## 4. Generar plantillas
+
+En `Preparar DBF`, usar el grupo `1. Generar plantillas Excel`.
+
+La aplicación genera archivos Excel en la carpeta configurada como:
+
+```text
+Carpeta plantillas Excel
 ```
 
 Las celdas editables aparecen resaltadas. Las celdas protegidas no deben modificarse.
 
-## 4. Completar plantillas
+## 5. Completar plantillas
 
 Completar manualmente los campos editables.
 
@@ -55,41 +81,41 @@ Regla básica:
 Si un valor no aplica, usar 0. No dejar celdas obligatorias vacías.
 ```
 
-## 5. Exportar DBF
+## 6. Exportar DBF
 
-Usar la pestaña `Exportar DBF`.
+En `Preparar DBF`, usar el grupo `2. Exportar DBF`.
 
-La aplicación valida las plantillas antes de crear los DBF. Si hay errores, no exporta.
+La aplicación valida las plantillas antes de crear los DBF. Si hay errores en el formato seleccionado, no exporta ese formato.
 
-Los DBF mensuales se generan en:
+Los DBF mensuales se generan directamente en la carpeta configurada como:
 
 ```text
-reports/dbf/YYYY-MM/
+Carpeta DBF generados
 ```
 
-## 6. Generar reportes TXT
+## 7. Generar reportes TXT
 
 Después de exportar DBF:
 
-1. Cambiar la carpeta DBF base a `reports/dbf/YYYY-MM`.
-2. Ir a la pestaña del formato requerido.
-3. Validar fuentes.
-4. Generar TXT.
+1. Ir a la pestaña `Generar TXT`.
+2. Validar fuentes del formato requerido.
+3. Generar TXT del formato requerido.
+
+La validación lee los DBF desde:
+
+```text
+Carpeta DBF generados
+```
+
+Los TXT se generan directamente en:
+
+```text
+Carpeta TXT generados
+```
 
 Para U2, la fuente principal es `CIUGEN.DBF` y el catálogo local es `config/local/u2_ciiu.yaml`.
 
-Los TXT se generan en:
-
-```text
-reports/g1/
-reports/g2/
-reports/g7/
-reports/g8/
-reports/u2/
-reports/g11/
-```
-
-## 7. Validaciones mínimas
+## 8. Validaciones mínimas
 
 Antes de usar un TXT como entregable, revisar:
 
@@ -99,7 +125,7 @@ Antes de usar un TXT como entregable, revisar:
 * que los catálogos usados sean los correctos
 * que el DBF fuente sea el exportado para el periodo
 
-## 8. Advertencia operativa
+## 9. Advertencia operativa
 
 La herramienta valida estructura, catálogos, periodos y reglas internas. No reemplaza la revisión técnica de los valores de negocio.
 

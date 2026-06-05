@@ -1,5 +1,20 @@
 # Historial de versiones
 
+## v1.8.0
+
+* Separación explícita de rutas operativas en desktop.
+* Carpeta DBF históricos configurable.
+* Carpeta plantillas Excel configurable.
+* Carpeta DBF generados configurable.
+* Carpeta TXT generados configurable.
+* Generación de plantillas por formato.
+* Exportación de DBF por formato.
+* Generación de TXT hacia una carpeta configurable.
+* Simplificación de la interfaz desktop.
+* Consolidación de flujo en Configuración, Preparar DBF, Generar TXT y Logs.
+* Eliminación de pestañas antiguas por formato.
+* Limpieza de métodos UI no utilizados.
+
 ## v1.7.0
 
 * Integración completa del Formato U2.

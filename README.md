@@ -6,16 +6,17 @@ El proyecto reemplaza trabajo manual realizado en herramientas antiguas o emulad
 
 ## Estado actual
 
-Versión actual: `v1.7.0`
+Versión actual: `v1.8.0`
 
 Funcionalidades principales:
 
-* generación de plantillas Excel mensuales
+* generación de plantillas Excel mensuales por formato
 * validación de plantillas antes de exportar
-* exportación de DBF mensuales
+* exportación de DBF mensuales por formato
 * validación de fuentes SISGEN
-* generación de reportes TXT
-* interfaz gráfica desktop
+* generación de reportes TXT por formato
+* interfaz gráfica desktop simplificada
+* rutas operativas configurables
 * CLI modularizado por formato
 * empaquetado Windows reproducible con Nuitka
 
@@ -33,15 +34,26 @@ Funcionalidades principales:
 ## Flujo mensual resumido
 
 ```text
-1. Configurar periodo, carpeta DBF base, carpeta de salida y catálogos.
-2. Generar plantillas Excel.
+1. Configurar periodo, rutas operativas y catálogos.
+2. Generar plantillas Excel por formato.
 3. Completar campos editables.
-4. Validar plantillas.
-5. Exportar DBF mensuales.
-6. Cambiar carpeta DBF base a reports/dbf/YYYY-MM.
-7. Validar fuentes.
-8. Generar TXT SISGEN.
+4. Exportar DBF por formato.
+5. Validar fuentes por formato.
+6. Generar TXT SISGEN por formato.
 ```
+
+## Rutas operativas sugeridas
+
+```text
+Carpeta DBF históricos: data/raw
+Carpeta plantillas Excel: reports/templates
+Carpeta DBF generados: reports/dbf/YYYY-MM
+Carpeta TXT generados: reports/txt/YYYY-MM
+```
+
+Estas rutas son sugeridas. La interfaz permite cambiarlas libremente.
+
+La carpeta DBF históricos y la carpeta DBF generados pueden ser la misma si el flujo operativo lo requiere.
 
 ## Uso rápido
 
