@@ -22,7 +22,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from sisgen_automation.catalogs.g1_repository import list_g1_units
+from sisgen_automation.catalogs.g1_repository import (
+    list_g1_units,
+    set_g1_unit_active,
+    set_g1_unit_visible,
+)
 from sisgen_automation.ui.workers.export_dbf import ExportDbfWorker
 from sisgen_automation.ui.workers.g1 import G1Worker
 from sisgen_automation.ui.workers.g11 import G11Worker
@@ -87,6 +91,10 @@ class MainWindow(QMainWindow):
         self.generate_g11_templates_button = QPushButton("Generar G11")
         self.generate_templates_button = QPushButton("Generar todas")
         self.refresh_g1_catalog_button = QPushButton("Refrescar catalogo G1")
+        self.activate_g1_unit_button = QPushButton("Activar")
+        self.deactivate_g1_unit_button = QPushButton("Desactivar")
+        self.show_g1_unit_button = QPushButton("Mostrar en plantilla")
+        self.hide_g1_unit_button = QPushButton("Ocultar de plantilla")
         self.export_g1_dbf_button = QPushButton("Exportar G1")
         self.export_g2_dbf_button = QPushButton("Exportar G2")
         self.export_g7_dbf_button = QPushButton("Exportar G7")
@@ -155,6 +163,10 @@ class MainWindow(QMainWindow):
             self.validate_u2_button,
             self.validate_g11_button,
             self.refresh_g1_catalog_button,
+            self.activate_g1_unit_button,
+            self.deactivate_g1_unit_button,
+            self.show_g1_unit_button,
+            self.hide_g1_unit_button,
         ]
 
         for button in primary_buttons:
@@ -515,6 +527,10 @@ class MainWindow(QMainWindow):
 
         actions = QHBoxLayout()
         actions.addWidget(self.refresh_g1_catalog_button)
+        actions.addWidget(self.activate_g1_unit_button)
+        actions.addWidget(self.deactivate_g1_unit_button)
+        actions.addWidget(self.show_g1_unit_button)
+        actions.addWidget(self.hide_g1_unit_button)
         actions.addStretch()
 
         layout.addWidget(title)
@@ -562,6 +578,59 @@ class MainWindow(QMainWindow):
 
         self.g1_catalog_table.resizeColumnsToContents()
         self._append_log(f"Catalogo G1 cargado: {len(rows)} unidades.")
+
+    def _selected_g1_catalog_id(self) -> int | None:
+        row = self.g1_catalog_table.currentRow()
+        if row < 0:
+            self._append_log("Selecciona una unidad del Catalogo G1.")
+            return None
+
+        item = self.g1_catalog_table.item(row, 0)
+        if item is None:
+            self._append_log("No se pudo leer el ID de la unidad seleccionada.")
+            return None
+
+        try:
+            return int(item.text())
+        except ValueError:
+            self._append_log(f"ID de unidad invalido: {item.text()}")
+            return None
+
+    def _set_selected_g1_active(self, active: bool) -> None:
+        unit_id = self._selected_g1_catalog_id()
+        if unit_id is None:
+            return
+
+        catalog_db = Path("data/catalogs/sisgen_catalogs.db")
+        if not catalog_db.exists():
+            self._append_log("Catalogo G1 SQLite no encontrado.")
+            return
+
+        unit = set_g1_unit_active(catalog_db, unit_id=unit_id, active=active)
+        action = "activada" if active else "desactivada"
+        self._append_log(
+            f"Unidad {action}: id={unit['id']} {unit['source_format']} "
+            f"{unit['central']} {unit['cnomnum']}"
+        )
+        self._refresh_g1_catalog_table()
+
+    def _set_selected_g1_visible(self, visible: bool) -> None:
+        unit_id = self._selected_g1_catalog_id()
+        if unit_id is None:
+            return
+
+        catalog_db = Path("data/catalogs/sisgen_catalogs.db")
+        if not catalog_db.exists():
+            self._append_log("Catalogo G1 SQLite no encontrado.")
+            return
+
+        unit = set_g1_unit_visible(catalog_db, unit_id=unit_id, visible=visible)
+        action = "visible en plantilla" if visible else "oculta de plantilla"
+        self._append_log(
+            f"Unidad {action}: id={unit['id']} {unit['source_format']} "
+            f"{unit['central']} {unit['cnomnum']}"
+        )
+        self._refresh_g1_catalog_table()
 
     def _build_logs_tab(self) -> QWidget:
         tab = QWidget()
@@ -615,6 +684,10 @@ class MainWindow(QMainWindow):
         self.generate_g11_templates_button.clicked.connect(lambda: self._start_template_worker("G11"))
         self.generate_templates_button.clicked.connect(lambda: self._start_template_worker("ALL"))
         self.refresh_g1_catalog_button.clicked.connect(self._refresh_g1_catalog_table)
+        self.activate_g1_unit_button.clicked.connect(lambda: self._set_selected_g1_active(True))
+        self.deactivate_g1_unit_button.clicked.connect(lambda: self._set_selected_g1_active(False))
+        self.show_g1_unit_button.clicked.connect(lambda: self._set_selected_g1_visible(True))
+        self.hide_g1_unit_button.clicked.connect(lambda: self._set_selected_g1_visible(False))
         self.export_g1_dbf_button.clicked.connect(lambda: self._start_export_dbf_worker("G1"))
         self.export_g2_dbf_button.clicked.connect(lambda: self._start_export_dbf_worker("G2"))
         self.export_g7_dbf_button.clicked.connect(lambda: self._start_export_dbf_worker("G7"))
