@@ -4,6 +4,7 @@ from pathlib import Path
 
 from PySide6.QtCore import QThread
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QFileDialog,
     QFormLayout,
     QGroupBox,
@@ -14,11 +15,14 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QTabWidget,
+    QTableWidget,
+    QTableWidgetItem,
     QTextEdit,
     QVBoxLayout,
     QWidget,
 )
 
+from sisgen_automation.catalogs.g1_repository import list_g1_units
 from sisgen_automation.ui.workers.export_dbf import ExportDbfWorker
 from sisgen_automation.ui.workers.g1 import G1Worker
 from sisgen_automation.ui.workers.g11 import G11Worker
@@ -82,6 +86,7 @@ class MainWindow(QMainWindow):
         self.generate_u2_templates_button = QPushButton("Generar U2")
         self.generate_g11_templates_button = QPushButton("Generar G11")
         self.generate_templates_button = QPushButton("Generar todas")
+        self.refresh_g1_catalog_button = QPushButton("Refrescar catalogo G1")
         self.export_g1_dbf_button = QPushButton("Exportar G1")
         self.export_g2_dbf_button = QPushButton("Exportar G2")
         self.export_g7_dbf_button = QPushButton("Exportar G7")
@@ -90,6 +95,23 @@ class MainWindow(QMainWindow):
         self.export_g11_dbf_button = QPushButton("Exportar G11")
         self.export_dbf_button = QPushButton("Exportar todo")
         self.clear_log_button = QPushButton("Limpiar logs")
+
+        self.g1_catalog_table = QTableWidget(0, 10)
+        self.g1_catalog_table.setHorizontalHeaderLabels([
+            "ID",
+            "Fuente",
+            "Central",
+            "CCODCON",
+            "Tipo",
+            "Unidad",
+            "NPOTINS",
+            "NPOTEFE",
+            "Activo",
+            "Visible",
+        ])
+        self.g1_catalog_table.setEditTriggers(
+            QAbstractItemView.EditTrigger.NoEditTriggers
+        )
 
         self.log_output = QTextEdit()
         self.log_output.setReadOnly(True)
@@ -132,6 +154,7 @@ class MainWindow(QMainWindow):
             self.validate_g8_button,
             self.validate_u2_button,
             self.validate_g11_button,
+            self.refresh_g1_catalog_button,
         ]
 
         for button in primary_buttons:
@@ -279,6 +302,7 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self._build_config_tab(), "1. Configuración")
         self.tabs.addTab(self._build_prepare_dbf_tab(), "2. Preparar DBF")
         self.tabs.addTab(self._build_txt_tab(), "3. Generar TXT")
+        self.tabs.addTab(self._build_g1_catalog_tab(), "4. Catalogo G1")
         self.tabs.addTab(self._build_logs_tab(), "Logs")
 
         self.setCentralWidget(root)
@@ -476,6 +500,69 @@ class MainWindow(QMainWindow):
 
         return tab
 
+    def _build_g1_catalog_tab(self) -> QWidget:
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+
+        title = QLabel("Catalogo G1")
+        title.setStyleSheet("font-size: 18px; font-weight: bold;")
+
+        description = QLabel(
+            "Consulta las unidades CENHID y CENTER cargadas en el catalogo local SQLite. "
+            "Esta vista es solo lectura; la edicion se agregara en el siguiente corte."
+        )
+        description.setWordWrap(True)
+
+        actions = QHBoxLayout()
+        actions.addWidget(self.refresh_g1_catalog_button)
+        actions.addStretch()
+
+        layout.addWidget(title)
+        layout.addWidget(description)
+        layout.addLayout(actions)
+        layout.addWidget(self.g1_catalog_table)
+
+        self._refresh_g1_catalog_table()
+
+        return tab
+
+    def _refresh_g1_catalog_table(self) -> None:
+        catalog_db = Path("data/catalogs/sisgen_catalogs.db")
+        self.g1_catalog_table.setRowCount(0)
+
+        if not catalog_db.exists():
+            self._append_log(
+                "Catalogo G1 SQLite no encontrado. Ejecuta primero la migracion YAML -> SQLite."
+            )
+            return
+
+        rows = list_g1_units(catalog_db)
+        self.g1_catalog_table.setRowCount(len(rows))
+
+        for row_index, row in enumerate(rows):
+            values = [
+                row["id"],
+                row["source_format"],
+                row["central"],
+                row["ccodcon"],
+                row["ctipgru"] or "-",
+                row["cnomnum"],
+                row["npotins"],
+                row["npotefe"],
+                "si" if row["active"] else "no",
+                "si" if row["visible_in_template"] else "no",
+            ]
+
+            for column_index, value in enumerate(values):
+                self.g1_catalog_table.setItem(
+                    row_index,
+                    column_index,
+                    QTableWidgetItem(str(value)),
+                )
+
+        self.g1_catalog_table.resizeColumnsToContents()
+        self._append_log(f"Catalogo G1 cargado: {len(rows)} unidades.")
+
     def _build_logs_tab(self) -> QWidget:
         tab = QWidget()
         layout = QVBoxLayout(tab)
@@ -527,6 +614,7 @@ class MainWindow(QMainWindow):
         self.generate_u2_templates_button.clicked.connect(lambda: self._start_template_worker("U2"))
         self.generate_g11_templates_button.clicked.connect(lambda: self._start_template_worker("G11"))
         self.generate_templates_button.clicked.connect(lambda: self._start_template_worker("ALL"))
+        self.refresh_g1_catalog_button.clicked.connect(self._refresh_g1_catalog_table)
         self.export_g1_dbf_button.clicked.connect(lambda: self._start_export_dbf_worker("G1"))
         self.export_g2_dbf_button.clicked.connect(lambda: self._start_export_dbf_worker("G2"))
         self.export_g7_dbf_button.clicked.connect(lambda: self._start_export_dbf_worker("G7"))
