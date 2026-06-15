@@ -147,8 +147,6 @@ def migrate_file(
                 SET central = ?,
                     npotins = ?,
                     npotefe = ?,
-                    active = ?,
-                    visible_in_template = ?,
                     source_period = ?,
                     notes = ?,
                     updated_at = CURRENT_TIMESTAMP
@@ -158,8 +156,6 @@ def migrate_file(
                     values["central"],
                     values["npotins"],
                     values["npotefe"],
-                    values["active"],
-                    values["visible_in_template"],
                     values["source_period"],
                     values["notes"],
                     exists[0],
