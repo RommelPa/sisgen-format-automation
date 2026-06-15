@@ -92,6 +92,92 @@ git status
 * [Formato U2](docs/formats/U2.md)
 * [Formato G11](docs/formats/G11.md)
 
+## Catalogo G1 SQLite local
+
+El proyecto permite usar una base SQLite local para administrar las unidades G1 usadas por CENHID y CENTER.
+
+La base SQLite se genera desde los YAML locales con:
+
+```powershell
+sisgen catalog migrate-g1-yaml --config-dir config/local --db data/catalogs/sisgen_catalogs.db
+```
+
+La base queda en `data/catalogs/sisgen_catalogs.db`. Esta carpeta no debe subirse a Git.
+
+### Listar unidades G1
+
+```powershell
+sisgen catalog list-g1-units --db data/catalogs/sisgen_catalogs.db
+```
+
+Filtrar por CENHID:
+
+```powershell
+sisgen catalog list-g1-units --db data/catalogs/sisgen_catalogs.db --source-format CENHID
+```
+
+Filtrar por CENTER:
+
+```powershell
+sisgen catalog list-g1-units --db data/catalogs/sisgen_catalogs.db --source-format CENTER
+```
+
+Listar solo unidades activas:
+
+```powershell
+sisgen catalog list-g1-units --db data/catalogs/sisgen_catalogs.db --active-only
+```
+
+Listar solo unidades visibles en plantilla:
+
+```powershell
+sisgen catalog list-g1-units --db data/catalogs/sisgen_catalogs.db --visible-only
+```
+
+### Administrar unidades G1
+
+Desactivar una unidad sin eliminarla:
+
+```powershell
+sisgen catalog deactivate-g1-unit --db data/catalogs/sisgen_catalogs.db --id 1
+```
+
+Activar una unidad:
+
+```powershell
+sisgen catalog activate-g1-unit --db data/catalogs/sisgen_catalogs.db --id 1
+```
+
+Ocultar una unidad de la plantilla:
+
+```powershell
+sisgen catalog hide-g1-unit --db data/catalogs/sisgen_catalogs.db --id 1
+```
+
+Mostrar una unidad en la plantilla:
+
+```powershell
+sisgen catalog show-g1-unit --db data/catalogs/sisgen_catalogs.db --id 1
+```
+
+### Generar plantillas desde SQLite
+
+CENHID:
+
+```powershell
+sisgen create-cenhid-template --period 2025-12 --catalog-db data/catalogs/sisgen_catalogs.db --output reports/templates/CENHID_2025_12_sqlite_template.xlsx
+```
+
+CENTER:
+
+```powershell
+sisgen create-center-template --period 2025-12 --catalog-db data/catalogs/sisgen_catalogs.db --output reports/templates/CENTER_2025_12_sqlite_template.xlsx
+```
+
+Tambien se mantiene compatibilidad con YAML usando `--catalog`.
+
+No se debe usar `--catalog` y `--catalog-db` al mismo tiempo.
+
 ## Archivos locales no versionados
 
 No se suben al repositorio:
