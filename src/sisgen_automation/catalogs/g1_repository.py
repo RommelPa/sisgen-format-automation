@@ -30,6 +30,7 @@ def list_g1_units(
 
     query = f"""
         SELECT
+            id,
             source_format,
             central,
             ccodcon,
@@ -51,3 +52,52 @@ def list_g1_units(
         rows = conn.execute(query, params).fetchall()
 
     return [dict(row) for row in rows]
+
+
+def set_g1_unit_active(
+    db_path: Path,
+    *,
+    unit_id: int,
+    active: bool,
+) -> dict[str, Any]:
+    if not db_path.exists():
+        raise FileNotFoundError(db_path)
+
+    with sqlite3.connect(db_path) as conn:
+        conn.row_factory = sqlite3.Row
+
+        row = conn.execute(
+            """
+            SELECT
+                id,
+                source_format,
+                central,
+                ccodcon,
+                ccodcen,
+                ctipgru,
+                cnomnum,
+                active,
+                visible_in_template
+            FROM catalog_g1_units
+            WHERE id = ?
+            """,
+            (unit_id,),
+        ).fetchone()
+
+        if row is None:
+            raise ValueError(f"No existe unidad G1 con id {unit_id}.")
+
+        conn.execute(
+            """
+            UPDATE catalog_g1_units
+            SET active = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (1 if active else 0, unit_id),
+        )
+        conn.commit()
+
+    result = dict(row)
+    result["active"] = 1 if active else 0
+    return result

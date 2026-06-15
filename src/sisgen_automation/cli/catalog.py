@@ -6,7 +6,10 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from sisgen_automation.catalogs.g1_repository import list_g1_units
+from sisgen_automation.catalogs.g1_repository import (
+    list_g1_units,
+    set_g1_unit_active,
+)
 from sisgen_automation.catalogs.g1_yaml_migration import (
     migrate_g1_yaml_catalogs,
     print_summary,
@@ -15,7 +18,7 @@ from sisgen_automation.catalogs.g1_yaml_migration import (
 
 def register_catalog_commands(app: typer.Typer, console: Console) -> None:
     catalog_app = typer.Typer(
-        help="Herramientas para administrar catálogos locales.",
+        help="Herramientas para administrar catalogos locales.",
         no_args_is_help=True,
     )
 
@@ -26,7 +29,7 @@ def register_catalog_commands(app: typer.Typer, console: Console) -> None:
         config_dir: Path = typer.Option(
             Path("config/local"),
             "--config-dir",
-            help="Carpeta donde están los YAML locales.",
+            help="Carpeta donde estan los YAML locales.",
         ),
         db: Path = typer.Option(
             Path("data/catalogs/sisgen_catalogs.db"),
@@ -34,7 +37,7 @@ def register_catalog_commands(app: typer.Typer, console: Console) -> None:
             help="Ruta de la base SQLite local.",
         ),
     ) -> None:
-        """Migra catálogos YAML G1 hacia SQLite."""
+        """Migra catalogos YAML G1 hacia SQLite."""
         try:
             results = migrate_g1_yaml_catalogs(config_dir=config_dir, db_path=db)
         except Exception as error:
@@ -48,7 +51,6 @@ def register_catalog_commands(app: typer.Typer, console: Console) -> None:
             )
 
         print_summary(db)
-
 
     @catalog_app.command("list-g1-units")
     def list_g1_units_command(
@@ -84,6 +86,7 @@ def register_catalog_commands(app: typer.Typer, console: Console) -> None:
             return
 
         table = Table(title="Catalogo G1 SQLite")
+        table.add_column("ID")
         table.add_column("Fuente")
         table.add_column("Central")
         table.add_column("CCODCON")
@@ -96,6 +99,7 @@ def register_catalog_commands(app: typer.Typer, console: Console) -> None:
 
         for row in rows:
             table.add_row(
+                str(row["id"]),
                 str(row["source_format"]),
                 str(row["central"]),
                 str(row["ccodcon"]),
@@ -109,3 +113,53 @@ def register_catalog_commands(app: typer.Typer, console: Console) -> None:
 
         console.print(table)
         console.print(f"Total: {len(rows)}")
+
+    @catalog_app.command("deactivate-g1-unit")
+    def deactivate_g1_unit_command(
+        unit_id: int = typer.Option(
+            ...,
+            "--id",
+            help="ID de la unidad G1 en SQLite.",
+        ),
+        db: Path = typer.Option(
+            Path("data/catalogs/sisgen_catalogs.db"),
+            "--db",
+            help="Ruta de la base SQLite local.",
+        ),
+    ) -> None:
+        """Desactiva una unidad G1 sin eliminarla."""
+        try:
+            row = set_g1_unit_active(db, unit_id=unit_id, active=False)
+        except Exception as error:
+            console.print(f"[bold red]Error:[/bold red] {error}")
+            raise typer.Exit(code=1) from error
+
+        console.print(
+            f"Unidad desactivada: id={row['id']} "
+            f"{row['source_format']} {row['central']} {row['cnomnum']}"
+        )
+
+    @catalog_app.command("activate-g1-unit")
+    def activate_g1_unit_command(
+        unit_id: int = typer.Option(
+            ...,
+            "--id",
+            help="ID de la unidad G1 en SQLite.",
+        ),
+        db: Path = typer.Option(
+            Path("data/catalogs/sisgen_catalogs.db"),
+            "--db",
+            help="Ruta de la base SQLite local.",
+        ),
+    ) -> None:
+        """Activa una unidad G1 previamente desactivada."""
+        try:
+            row = set_g1_unit_active(db, unit_id=unit_id, active=True)
+        except Exception as error:
+            console.print(f"[bold red]Error:[/bold red] {error}")
+            raise typer.Exit(code=1) from error
+
+        console.print(
+            f"Unidad activada: id={row['id']} "
+            f"{row['source_format']} {row['central']} {row['cnomnum']}"
+        )
