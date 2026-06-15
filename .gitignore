@@ -49,3 +49,6 @@ desktop.ini
 config/local/*
 !config/local/.gitkeep
 dist-nuitka/
+data/catalogs/*.db
+data/catalogs/*.db-shm
+data/catalogs/*.db-wal
