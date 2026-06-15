@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+
+from sisgen_automation.catalogs.g1_repository import list_g1_units
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Protection, Side
 
@@ -104,6 +106,31 @@ def load_center_units(catalog_path: Path) -> list[CenterUnit]:
     return parsed_units
 
 
+def load_center_units_from_db(catalog_db_path: Path) -> list[CenterUnit]:
+    rows = list_g1_units(
+        catalog_db_path,
+        source_format="CENTER",
+        active_only=True,
+        visible_only=True,
+    )
+
+    if not rows:
+        raise ValueError("El catalogo SQLite G1 no contiene unidades CENTER activas y visibles.")
+
+    return [
+        CenterUnit(
+            central=str(row["central"]),
+            ccodcon=str(row["ccodcon"]),
+            ccodcen=str(row["ccodcen"]),
+            ctipgru=str(row["ctipgru"]),
+            cnomnum=str(row["cnomnum"]),
+            npotins=str(row["npotins"]),
+            npotefe=str(row["npotefe"]),
+        )
+        for row in rows
+    ]
+
+
 def default_comcen_template_path(period: str) -> Path:
     year_text, month_text = period.split("-", maxsplit=1)
     return Path("reports") / "templates" / f"COMCEN_{year_text}_{month_text}_template.xlsx"
@@ -112,11 +139,21 @@ def default_comcen_template_path(period: str) -> Path:
 def create_comcen_template(
     *,
     period: str,
-    catalog_path: Path,
+    catalog_path: Path | None = None,
     output_path: Path | None = None,
+    catalog_db_path: Path | None = None,
 ) -> ComcenTemplateResult:
     year_short, month = parse_period(period)
-    units = load_center_units(catalog_path)
+
+    if catalog_path is not None and catalog_db_path is not None:
+        raise ValueError("Use solo un origen de catalogo: YAML o SQLite.")
+
+    if catalog_db_path is not None:
+        units = load_center_units_from_db(catalog_db_path)
+    else:
+        if catalog_path is None:
+            raise ValueError("Debes indicar catalog_path o catalog_db_path.")
+        units = load_center_units(catalog_path)
 
     if output_path is None:
         output_path = default_comcen_template_path(period)

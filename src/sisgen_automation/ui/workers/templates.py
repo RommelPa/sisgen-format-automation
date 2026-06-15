@@ -94,9 +94,10 @@ class TemplateWorker(QObject, WorkerFileMixin):
                 g1_catalog_db = self.g1_catalog_db
 
             if self._wants("G1"):
-                self._ensure_file(self.cenhid_catalog)
-                self._ensure_file(self.center_catalog)
-                self._ensure_file(dacoce_path)
+                if g1_catalog_db is None:
+                    self._ensure_file(self.cenhid_catalog)
+                    self._ensure_file(self.center_catalog)
+                    self._ensure_file(dacoce_path)
 
                 self.log.emit("Generando plantillas G1...")
 
@@ -127,18 +128,20 @@ class TemplateWorker(QObject, WorkerFileMixin):
 
                 dacoce_output = create_dacoce_template(
                     period=self.period,
-                    source_dbf_path=dacoce_path,
+                    source_dbf_path=None if g1_catalog_db is not None else dacoce_path,
                     output_path=templates_dir / f"DACOCE_{period_label}_template.xlsx",
-                    cenhid_catalog_path=self.cenhid_catalog,
-                    center_catalog_path=self.center_catalog,
+                    cenhid_catalog_path=None if g1_catalog_db is not None else self.cenhid_catalog,
+                    center_catalog_path=None if g1_catalog_db is not None else self.center_catalog,
+                    catalog_db_path=g1_catalog_db,
                 )
                 self.log.emit(f"DACOCE: {dacoce_output.output_path}")
                 generated.append("DACOCE")
 
                 comcen_output = create_comcen_template(
                     period=self.period,
-                    catalog_path=self.center_catalog,
+                    catalog_path=None if g1_catalog_db is not None else self.center_catalog,
                     output_path=templates_dir / f"COMCEN_{period_label}_template.xlsx",
+                    catalog_db_path=g1_catalog_db,
                 )
                 self.log.emit(f"COMCEN: {comcen_output.output_path}")
                 generated.append("COMCEN")

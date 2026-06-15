@@ -15,6 +15,7 @@ from sisgen_automation.cenhid.template import parse_period
 
 from sisgen_automation.cenhid.catalog import load_cenhid_catalog
 from sisgen_automation.center.catalog import load_center_catalog
+from sisgen_automation.catalogs.g1_repository import list_g1_units
 
 DACOCE_HEADERS = [
     "CANOREG",
@@ -169,6 +170,44 @@ def _read_rows_from_catalogs(
 
     return sorted(rows, key=lambda item: (item["CTIPCEN"], item["CCODCON"]))
 
+
+def _read_rows_from_catalog_db(catalog_db_path: Path) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    seen_keys: set[tuple[str, str]] = set()
+
+    for unit in list_g1_units(
+        catalog_db_path,
+        active_only=True,
+        visible_only=True,
+    ):
+        source_format = str(unit["source_format"]).upper()
+
+        if source_format == "CENHID":
+            ctipcen = "H"
+        elif source_format == "CENTER":
+            ctipcen = "T"
+        else:
+            continue
+
+        key = (str(unit["ccodcon"]), ctipcen)
+
+        if key in seen_keys:
+            continue
+
+        seen_keys.add(key)
+        rows.append(
+            {
+                "CCODCON": str(unit["ccodcon"]),
+                "CTIPCEN": ctipcen,
+            }
+        )
+
+    if not rows:
+        raise ValueError("El catalogo SQLite G1 no contiene unidades activas y visibles.")
+
+    return sorted(rows, key=lambda item: (item["CTIPCEN"], item["CCODCON"]))
+
+
 def _write_instructions_sheet(workbook: Workbook, period: str, base_period: str) -> None:
     sheet = workbook.create_sheet("INSTRUCCIONES")
 
@@ -294,12 +333,19 @@ def create_dacoce_template(
     output_path: Path | None = None,
     cenhid_catalog_path: Path | None = None,
     center_catalog_path: Path | None = None,
+    catalog_db_path: Path | None = None,
 ) -> DacoceTemplateResult:
     year, month = parse_period(period)
 
     use_catalogs = cenhid_catalog_path is not None or center_catalog_path is not None
 
-    if use_catalogs:
+    if catalog_db_path is not None and use_catalogs:
+        raise ValueError("Use solo un origen de catalogo: YAML o SQLite.")
+
+    if catalog_db_path is not None:
+        base_period = "catalogo SQLite local"
+        base_rows = _read_rows_from_catalog_db(catalog_db_path)
+    elif use_catalogs:
         if cenhid_catalog_path is None or center_catalog_path is None:
             raise ValueError(
                 "Para generar DACOCE desde catálogos debes indicar "
