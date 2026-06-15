@@ -813,6 +813,7 @@ class MainWindow(QMainWindow):
             g7_catalog=Path(self.g7_catalog_input.text().strip()),
             g8_catalog=Path(self.g8_catalog_input.text().strip()),
             g11_catalog=Path(self.g11_catalog_input.text().strip()),
+            g1_catalog_db=Path(self.g1_catalog_db_input.text().strip()),
         )
 
         self.worker.moveToThread(self.worker_thread)

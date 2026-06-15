@@ -61,6 +61,7 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
         g7_catalog: Path,
         g8_catalog: Path,
         g11_catalog: Path,
+        g1_catalog_db: Path | None = None,
     ) -> None:
         super().__init__()
         self.period = period
@@ -75,6 +76,7 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
         self.g7_catalog = g7_catalog
         self.g8_catalog = g8_catalog
         self.g11_catalog = g11_catalog
+        self.g1_catalog_db = g1_catalog_db
 
     @property
     def templates_dir(self) -> Path:
@@ -183,7 +185,15 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
         self.log.emit(f"{name} exportado: {output_path} ({appended} registros nuevos)")
         return name
 
+    def _g1_catalog_db_or_none(self) -> Path | None:
+        if self.g1_catalog_db is not None and self.g1_catalog_db.exists():
+            return self.g1_catalog_db
+
+        return None
+
     def _validate_g1(self) -> bool:
+        g1_catalog_db = self._g1_catalog_db_or_none()
+
         for path in [
             self._source_path("CENHID"),
             self._source_path("CENTER"),
@@ -193,21 +203,27 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
             self._template_path("CENTER"),
             self._template_path("DACOCE"),
             self._template_path("COMCEN"),
-            self.cenhid_catalog,
             self.center_catalog,
         ]:
             self._ensure_file(path)
+
+        if g1_catalog_db is None:
+            self._ensure_file(self.cenhid_catalog)
+        else:
+            self.log.emit(f"Catalogo G1 SQLite para CENHID/CENTER: {g1_catalog_db}")
 
         results = [
             ("CENHID", validate_cenhid_template(
                 template_path=self._template_path("CENHID"),
                 period=self.period,
-                catalog_path=self.cenhid_catalog,
+                catalog_path=None if g1_catalog_db is not None else self.cenhid_catalog,
+                catalog_db_path=g1_catalog_db,
             )),
             ("CENTER", validate_center_template(
                 template_path=self._template_path("CENTER"),
                 period=self.period,
-                catalog_path=self.center_catalog,
+                catalog_path=None if g1_catalog_db is not None else self.center_catalog,
+                catalog_db_path=g1_catalog_db,
             )),
             ("DACOCE", validate_dacoce_template(
                 template_path=self._template_path("DACOCE"),
@@ -224,19 +240,22 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
 
     def _export_g1(self) -> list[str]:
         exported = []
+        g1_catalog_db = self._g1_catalog_db_or_none()
 
         exported.append(self._export_result("CENHID", lambda: export_cenhid_dbf(
             source_dbf_path=self._source_path("CENHID"),
             template_path=self._template_path("CENHID"),
             period=self.period,
-            catalog_path=self.cenhid_catalog,
+            catalog_path=None if g1_catalog_db is not None else self.cenhid_catalog,
+            catalog_db_path=g1_catalog_db,
             output_path=self.output_dbf_dir / "CENHID.DBF",
         )))
         exported.append(self._export_result("CENTER", lambda: export_center_dbf(
             source_dbf_path=self._source_path("CENTER"),
             template_path=self._template_path("CENTER"),
             period=self.period,
-            catalog_path=self.center_catalog,
+            catalog_path=None if g1_catalog_db is not None else self.center_catalog,
+            catalog_db_path=g1_catalog_db,
             output_path=self.output_dbf_dir / "CENTER.DBF",
         )))
         exported.append(self._export_result("DACOCE", lambda: export_dacoce_dbf(
