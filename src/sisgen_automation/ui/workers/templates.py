@@ -44,6 +44,7 @@ class TemplateWorker(QObject, WorkerFileMixin):
         g7_catalog: Path,
         g8_catalog: Path,
         g11_catalog: Path,
+        g1_catalog_db: Path | None = None,
     ) -> None:
         super().__init__()
         self.period = period
@@ -57,6 +58,7 @@ class TemplateWorker(QObject, WorkerFileMixin):
         self.g7_catalog = g7_catalog
         self.g8_catalog = g8_catalog
         self.g11_catalog = g11_catalog
+        self.g1_catalog_db = g1_catalog_db
 
     def _wants(self, format_key: str) -> bool:
         return self.format_key == "ALL" or self.format_key == format_key
@@ -87,6 +89,10 @@ class TemplateWorker(QObject, WorkerFileMixin):
 
             generated: list[str] = []
 
+            g1_catalog_db = None
+            if self.g1_catalog_db is not None and self.g1_catalog_db.exists():
+                g1_catalog_db = self.g1_catalog_db
+
             if self._wants("G1"):
                 self._ensure_file(self.cenhid_catalog)
                 self._ensure_file(self.center_catalog)
@@ -94,18 +100,27 @@ class TemplateWorker(QObject, WorkerFileMixin):
 
                 self.log.emit("Generando plantillas G1...")
 
+                if g1_catalog_db is not None:
+                    self.log.emit(f"Catalogo G1 SQLite: {g1_catalog_db}")
+                elif self.g1_catalog_db is not None:
+                    self.log.emit(
+                        "Catalogo G1 SQLite no encontrado; se usaran YAML G1."
+                    )
+
                 cenhid_output = create_cenhid_template(
                     period=self.period,
-                    catalog_path=self.cenhid_catalog,
+                    catalog_path=None if g1_catalog_db is not None else self.cenhid_catalog,
                     output_path=templates_dir / f"CENHID_{period_label}_template.xlsx",
+                    catalog_db_path=g1_catalog_db,
                 )
                 self.log.emit(f"CENHID: {cenhid_output}")
                 generated.append("CENHID")
 
                 center_output = create_center_template(
                     period=self.period,
-                    catalog_path=self.center_catalog,
+                    catalog_path=None if g1_catalog_db is not None else self.center_catalog,
                     output_path=templates_dir / f"CENTER_{period_label}_template.xlsx",
+                    catalog_db_path=g1_catalog_db,
                 )
                 self.log.emit(f"CENTER: {center_output}")
                 generated.append("CENTER")

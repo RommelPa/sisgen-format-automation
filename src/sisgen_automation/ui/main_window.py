@@ -56,6 +56,7 @@ class MainWindow(QMainWindow):
         self.output_dir_input = QLineEdit(str(Path("reports/txt/2025-12")))
         self.cenhid_catalog_input = QLineEdit(str(Path("config/local/cenhid_units.yaml")))
         self.center_catalog_input = QLineEdit(str(Path("config/local/center_units.yaml")))
+        self.g1_catalog_db_input = QLineEdit(str(Path("data/catalogs/sisgen_catalogs.db")))
         self.u2_catalog_input = QLineEdit(str(Path("config/local/u2_ciiu.yaml")))
         self.g2_catalog_input = QLineEdit(str(Path("config/local/g2_distributors.yaml")))
         self.g7_catalog_input = QLineEdit(str(Path("config/local/g7_units.yaml")))
@@ -553,6 +554,11 @@ class MainWindow(QMainWindow):
     def _select_center_catalog(self) -> None:
         self._select_file(self.center_catalog_input, "YAML (*.yaml *.yml)")
 
+    def _select_g1_catalog_db(self) -> None:
+        self._select_file(
+            self.g1_catalog_db_input,
+            "SQLite (*.db *.sqlite *.sqlite3);;Todos (*.*)",
+        )
 
     def _select_u2_catalog(self) -> None:
         self._select_file(self.u2_catalog_input, "YAML (*.yaml *.yml)")
@@ -602,6 +608,7 @@ class MainWindow(QMainWindow):
             format_key=format_key,
             cenhid_catalog=Path(self.cenhid_catalog_input.text().strip()),
             center_catalog=Path(self.center_catalog_input.text().strip()),
+            g1_catalog_db=Path(self.g1_catalog_db_input.text().strip()),
             u2_catalog=Path(self.u2_catalog_input.text().strip()),
             g2_catalog=Path(self.g2_catalog_input.text().strip()),
             g7_catalog=Path(self.g7_catalog_input.text().strip()),
