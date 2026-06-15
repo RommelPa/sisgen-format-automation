@@ -14,6 +14,7 @@ from sisgen_automation.cli.cenhid import register_cenhid_commands
 from sisgen_automation.cli.dacoce import register_dacoce_commands
 from sisgen_automation.cli.center import register_center_commands
 from sisgen_automation.cli.comcen import register_comcen_commands
+from sisgen_automation.cli.catalog import register_catalog_commands
 
 
 app = typer.Typer(
@@ -32,6 +33,7 @@ register_cenhid_commands(app, console)
 register_dacoce_commands(app, console)
 register_center_commands(app, console)
 register_comcen_commands(app, console)
+register_catalog_commands(app, console)
 @app.callback()
 def cli() -> None:
     """CLI principal para automatizar formatos SISGEN."""
