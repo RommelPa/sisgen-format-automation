@@ -10,7 +10,7 @@ from openpyxl.styles import Alignment, Font, PatternFill, Protection
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 
-from sisgen_automation.catalogs.g1_repository import list_g1_units
+from sisgen_automation.catalogs.g1_template_catalog import load_cenhid_template_catalog_from_db
 from sisgen_automation.cenhid.catalog import CenhidUnit, load_cenhid_catalog
 
 CENHID_HEADERS = [
@@ -196,39 +196,6 @@ def _apply_sheet_format(sheet, last_row: int) -> None:
 
 
 
-def _load_cenhid_catalog_from_db(catalog_db_path: Path) -> dict[tuple[str, str], CenhidUnit]:
-    rows = list_g1_units(
-        catalog_db_path,
-        source_format="CENHID",
-        active_only=True,
-        visible_only=True,
-    )
-
-    if not rows:
-        raise ValueError("No hay unidades CENHID activas y visibles en la base SQLite.")
-
-    catalog: dict[tuple[str, str], CenhidUnit] = {}
-
-    for row in rows:
-        unit = CenhidUnit(
-            central=str(row["central"]),
-            group=str(row["cnomnum"]),
-            ccodcon=str(row["ccodcon"]),
-            ccodcen=str(row["ccodcen"]),
-            cnomnum=str(row["cnomnum"]),
-            npotins=Decimal(str(row["npotins"])),
-            npotefe=Decimal(str(row["npotefe"])),
-        )
-
-        if unit.key in catalog:
-            raise ValueError(
-                "Catalogo SQLite CENHID duplicado para "
-                f"CCODCON={unit.ccodcon}, CNOMNUM={unit.cnomnum}."
-            )
-
-        catalog[unit.key] = unit
-
-    return catalog
 
 def create_cenhid_template(
     period: str,
@@ -245,7 +212,7 @@ def create_cenhid_template(
         raise ValueError("Use solo un origen de catalogo: YAML o SQLite.")
 
     if catalog_db_path is not None:
-        catalog = _load_cenhid_catalog_from_db(catalog_db_path)
+        catalog = load_cenhid_template_catalog_from_db(catalog_db_path)
     else:
         if catalog_path is None:
             raise ValueError("Debe indicar catalog_path.")

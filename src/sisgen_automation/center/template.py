@@ -10,7 +10,7 @@ from openpyxl.styles import Alignment, Font, PatternFill, Protection
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 
-from sisgen_automation.catalogs.g1_repository import list_g1_units
+from sisgen_automation.catalogs.g1_template_catalog import load_center_template_catalog_from_db
 from sisgen_automation.center.catalog import CenterUnit, load_center_catalog
 
 CENTER_HEADERS = [
@@ -197,41 +197,6 @@ def _apply_sheet_format(sheet, last_row: int) -> None:
 
 
 
-def _load_center_catalog_from_db(catalog_db_path: Path) -> dict[tuple[str, str, str], CenterUnit]:
-    rows = list_g1_units(
-        catalog_db_path,
-        source_format="CENTER",
-        active_only=True,
-        visible_only=True,
-    )
-
-    if not rows:
-        raise ValueError("No hay unidades CENTER activas y visibles en la base SQLite.")
-
-    catalog: dict[tuple[str, str, str], CenterUnit] = {}
-
-    for row in rows:
-        unit = CenterUnit(
-            central=str(row["central"]),
-            group=str(row["cnomnum"]),
-            ccodcon=str(row["ccodcon"]),
-            ccodcen=str(row["ccodcen"]),
-            ctipgru=str(row["ctipgru"]).upper(),
-            cnomnum=str(row["cnomnum"]),
-            npotins=Decimal(str(row["npotins"])),
-            npotefe=Decimal(str(row["npotefe"])),
-        )
-
-        if unit.key in catalog:
-            raise ValueError(
-                "Catalogo SQLite CENTER duplicado para "
-                f"CCODCON={unit.ccodcon}, CTIPGRU={unit.ctipgru}, "
-                f"CNOMNUM={unit.cnomnum}."
-            )
-
-        catalog[unit.key] = unit
-
-    return catalog
 
 def create_center_template(
     period: str,
@@ -248,7 +213,7 @@ def create_center_template(
         raise ValueError("Use solo un origen de catalogo: YAML o SQLite.")
 
     if catalog_db_path is not None:
-        catalog = _load_center_catalog_from_db(catalog_db_path)
+        catalog = load_center_template_catalog_from_db(catalog_db_path)
     else:
         if catalog_path is None:
             raise ValueError("Debe indicar catalog_path.")
