@@ -92,11 +92,16 @@ def register_cenhid_commands(app: typer.Typer, console: Console) -> None:
             "-p",
             help="Periodo de la plantilla en formato YYYY-MM. Ejemplo: 2026-01.",
         ),
-        catalog: Path = typer.Option(
-            ...,
+        catalog: Optional[Path] = typer.Option(
+            None,
             "--catalog",
             "-c",
             help="Ruta del catálogo local CENHID en YAML.",
+        ),
+        catalog_db: Optional[Path] = typer.Option(
+            None,
+            "--catalog-db",
+            help="Ruta de la base SQLite local de catalogos.",
         ),
         output: Optional[Path] = typer.Option(
             None,
@@ -111,6 +116,7 @@ def register_cenhid_commands(app: typer.Typer, console: Console) -> None:
                 period=period,
                 catalog_path=catalog,
                 output_path=output,
+                catalog_db_path=catalog_db,
             )
         except ValueError as error:
             console.print(f"[bold red]Error:[/bold red] {error}")
