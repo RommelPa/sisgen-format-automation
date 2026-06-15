@@ -7,6 +7,7 @@ from typing import Literal
 
 from openpyxl import load_workbook
 
+from sisgen_automation.catalogs.g1_template_catalog import load_cenhid_template_catalog_from_db
 from sisgen_automation.cenhid.catalog import CenhidUnit, load_cenhid_catalog
 from sisgen_automation.cenhid.template import CENHID_HEADERS, parse_period
 
@@ -285,10 +286,26 @@ def _validate_total_formula(
 def validate_cenhid_template(
     template_path: Path,
     period: str,
-    catalog_path: Path,
+    catalog_path: Path | None = None,
+    catalog_db_path: Path | None = None,
 ) -> CenhidTemplateValidationResult:
     period_year, period_month = parse_period(period)
-    catalog = load_cenhid_catalog(catalog_path)
+
+    if catalog_path is None and catalog_db_path is None:
+        raise ValueError("Debe indicar catalog_path o catalog_db_path.")
+
+    if catalog_path is not None and catalog_db_path is not None:
+        raise ValueError("Use solo un origen de catalogo: YAML o SQLite.")
+
+    if catalog_db_path is not None:
+        catalog = load_cenhid_template_catalog_from_db(catalog_db_path)
+        catalog_source_path = catalog_db_path
+    else:
+        if catalog_path is None:
+            raise ValueError("Debe indicar catalog_path.")
+        catalog = load_cenhid_catalog(catalog_path)
+        catalog_source_path = catalog_path
+
     issues: list[TemplateIssue] = []
 
     if not template_path.exists():
@@ -372,7 +389,7 @@ def validate_cenhid_template(
     return CenhidTemplateValidationResult(
         template_path=template_path,
         period=period,
-        catalog_path=catalog_path,
+        catalog_path=catalog_source_path,
         rows_read=rows_read,
         expected_units=len(catalog),
         valid_units=len(seen_units),
