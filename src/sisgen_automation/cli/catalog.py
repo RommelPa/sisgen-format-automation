@@ -9,6 +9,7 @@ from rich.table import Table
 from sisgen_automation.catalogs.g1_repository import (
     list_g1_units,
     set_g1_unit_active,
+    set_g1_unit_visible,
 )
 from sisgen_automation.catalogs.g1_yaml_migration import (
     migrate_g1_yaml_catalogs,
@@ -69,6 +70,11 @@ def register_catalog_commands(app: typer.Typer, console: Console) -> None:
             "--active-only",
             help="Muestra solo registros activos.",
         ),
+        visible_only: bool = typer.Option(
+            False,
+            "--visible-only",
+            help="Muestra solo registros visibles en plantilla.",
+        ),
     ) -> None:
         """Lista unidades G1 almacenadas en SQLite."""
         try:
@@ -76,6 +82,7 @@ def register_catalog_commands(app: typer.Typer, console: Console) -> None:
                 db,
                 source_format=source_format,
                 active_only=active_only,
+                visible_only=visible_only,
             )
         except Exception as error:
             console.print(f"[bold red]Error:[/bold red] {error}")
@@ -116,11 +123,7 @@ def register_catalog_commands(app: typer.Typer, console: Console) -> None:
 
     @catalog_app.command("deactivate-g1-unit")
     def deactivate_g1_unit_command(
-        unit_id: int = typer.Option(
-            ...,
-            "--id",
-            help="ID de la unidad G1 en SQLite.",
-        ),
+        unit_id: int = typer.Option(..., "--id", help="ID de la unidad G1 en SQLite."),
         db: Path = typer.Option(
             Path("data/catalogs/sisgen_catalogs.db"),
             "--db",
@@ -141,11 +144,7 @@ def register_catalog_commands(app: typer.Typer, console: Console) -> None:
 
     @catalog_app.command("activate-g1-unit")
     def activate_g1_unit_command(
-        unit_id: int = typer.Option(
-            ...,
-            "--id",
-            help="ID de la unidad G1 en SQLite.",
-        ),
+        unit_id: int = typer.Option(..., "--id", help="ID de la unidad G1 en SQLite."),
         db: Path = typer.Option(
             Path("data/catalogs/sisgen_catalogs.db"),
             "--db",
@@ -161,5 +160,47 @@ def register_catalog_commands(app: typer.Typer, console: Console) -> None:
 
         console.print(
             f"Unidad activada: id={row['id']} "
+            f"{row['source_format']} {row['central']} {row['cnomnum']}"
+        )
+
+    @catalog_app.command("hide-g1-unit")
+    def hide_g1_unit_command(
+        unit_id: int = typer.Option(..., "--id", help="ID de la unidad G1 en SQLite."),
+        db: Path = typer.Option(
+            Path("data/catalogs/sisgen_catalogs.db"),
+            "--db",
+            help="Ruta de la base SQLite local.",
+        ),
+    ) -> None:
+        """Oculta una unidad G1 de la plantilla sin eliminarla."""
+        try:
+            row = set_g1_unit_visible(db, unit_id=unit_id, visible=False)
+        except Exception as error:
+            console.print(f"[bold red]Error:[/bold red] {error}")
+            raise typer.Exit(code=1) from error
+
+        console.print(
+            f"Unidad oculta de plantilla: id={row['id']} "
+            f"{row['source_format']} {row['central']} {row['cnomnum']}"
+        )
+
+    @catalog_app.command("show-g1-unit")
+    def show_g1_unit_command(
+        unit_id: int = typer.Option(..., "--id", help="ID de la unidad G1 en SQLite."),
+        db: Path = typer.Option(
+            Path("data/catalogs/sisgen_catalogs.db"),
+            "--db",
+            help="Ruta de la base SQLite local.",
+        ),
+    ) -> None:
+        """Vuelve visible una unidad G1 en la plantilla."""
+        try:
+            row = set_g1_unit_visible(db, unit_id=unit_id, visible=True)
+        except Exception as error:
+            console.print(f"[bold red]Error:[/bold red] {error}")
+            raise typer.Exit(code=1) from error
+
+        console.print(
+            f"Unidad visible en plantilla: id={row['id']} "
             f"{row['source_format']} {row['central']} {row['cnomnum']}"
         )

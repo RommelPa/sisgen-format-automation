@@ -10,6 +10,7 @@ def list_g1_units(
     *,
     source_format: str | None = None,
     active_only: bool = False,
+    visible_only: bool = False,
 ) -> list[dict[str, Any]]:
     if not db_path.exists():
         raise FileNotFoundError(db_path)
@@ -23,6 +24,9 @@ def list_g1_units(
 
     if active_only:
         conditions.append("active = 1")
+
+    if visible_only:
+        conditions.append("visible_in_template = 1")
 
     where_clause = ""
     if conditions:
@@ -54,6 +58,35 @@ def list_g1_units(
     return [dict(row) for row in rows]
 
 
+def get_g1_unit_by_id(
+    conn: sqlite3.Connection,
+    *,
+    unit_id: int,
+) -> sqlite3.Row:
+    row = conn.execute(
+        """
+        SELECT
+            id,
+            source_format,
+            central,
+            ccodcon,
+            ccodcen,
+            ctipgru,
+            cnomnum,
+            active,
+            visible_in_template
+        FROM catalog_g1_units
+        WHERE id = ?
+        """,
+        (unit_id,),
+    ).fetchone()
+
+    if row is None:
+        raise ValueError(f"No existe unidad G1 con id {unit_id}.")
+
+    return row
+
+
 def set_g1_unit_active(
     db_path: Path,
     *,
@@ -65,27 +98,7 @@ def set_g1_unit_active(
 
     with sqlite3.connect(db_path) as conn:
         conn.row_factory = sqlite3.Row
-
-        row = conn.execute(
-            """
-            SELECT
-                id,
-                source_format,
-                central,
-                ccodcon,
-                ccodcen,
-                ctipgru,
-                cnomnum,
-                active,
-                visible_in_template
-            FROM catalog_g1_units
-            WHERE id = ?
-            """,
-            (unit_id,),
-        ).fetchone()
-
-        if row is None:
-            raise ValueError(f"No existe unidad G1 con id {unit_id}.")
+        row = get_g1_unit_by_id(conn, unit_id=unit_id)
 
         conn.execute(
             """
@@ -100,4 +113,33 @@ def set_g1_unit_active(
 
     result = dict(row)
     result["active"] = 1 if active else 0
+    return result
+
+
+def set_g1_unit_visible(
+    db_path: Path,
+    *,
+    unit_id: int,
+    visible: bool,
+) -> dict[str, Any]:
+    if not db_path.exists():
+        raise FileNotFoundError(db_path)
+
+    with sqlite3.connect(db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        row = get_g1_unit_by_id(conn, unit_id=unit_id)
+
+        conn.execute(
+            """
+            UPDATE catalog_g1_units
+            SET visible_in_template = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (1 if visible else 0, unit_id),
+        )
+        conn.commit()
+
+    result = dict(row)
+    result["visible_in_template"] = 1 if visible else 0
     return result
