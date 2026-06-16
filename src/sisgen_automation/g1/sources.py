@@ -10,6 +10,10 @@ from dbfread import DBF  # type: ignore[import-untyped]
 from sisgen_automation.cenhid.catalog import load_cenhid_catalog
 from sisgen_automation.cenhid.template import parse_period
 from sisgen_automation.center.catalog import load_center_catalog
+from sisgen_automation.catalogs.g1_template_catalog import (
+    load_cenhid_template_catalog_from_db,
+    load_center_template_catalog_from_db,
+)
 
 IssueSeverity = Literal["ERROR", "WARNING"]
 SectionName = Literal["HIDRO", "TERMO"]
@@ -316,11 +320,18 @@ def _status_to_g1(value: object) -> str:
 def _read_cenhid_groups(
     cenhid_path: Path,
     period: str,
-    catalog_path: Path,
+    catalog_path: Path | None,
+    catalog_db_path: Path | None,
     issues: list[G1SourceIssue],
 ) -> list[G1GroupRow]:
     year, month = parse_period(period)
-    catalog = load_cenhid_catalog(catalog_path)
+
+    if catalog_db_path is not None:
+        catalog = load_cenhid_template_catalog_from_db(catalog_db_path)
+    else:
+        if catalog_path is None:
+            raise ValueError("Debe indicar catalog_path o catalog_db_path para CENHID.")
+        catalog = load_cenhid_catalog(catalog_path)
     table = DBF(str(cenhid_path), load=True, char_decode_errors="ignore")
 
     rows: list[G1GroupRow] = []
@@ -389,11 +400,18 @@ def _read_cenhid_groups(
 def _read_center_groups(
     center_path: Path,
     period: str,
-    catalog_path: Path,
+    catalog_path: Path | None,
+    catalog_db_path: Path | None,
     issues: list[G1SourceIssue],
 ) -> list[G1GroupRow]:
     year, month = parse_period(period)
-    catalog = load_center_catalog(catalog_path)
+
+    if catalog_db_path is not None:
+        catalog = load_center_template_catalog_from_db(catalog_db_path)
+    else:
+        if catalog_path is None:
+            raise ValueError("Debe indicar catalog_path o catalog_db_path para CENTER.")
+        catalog = load_center_catalog(catalog_path)
     table = DBF(str(center_path), load=True, char_decode_errors="ignore")
 
     rows: list[G1GroupRow] = []
@@ -762,22 +780,35 @@ def validate_g1_sources(
     dacoce_path: Path,
     comcen_path: Path,
     period: str,
-    cenhid_catalog_path: Path,
-    center_catalog_path: Path,
+    cenhid_catalog_path: Path | None = None,
+    center_catalog_path: Path | None = None,
+    catalog_db_path: Path | None = None,
 ) -> G1SourcesValidationResult:
     parse_period(period)
+
+    if catalog_db_path is None and (cenhid_catalog_path is None or center_catalog_path is None):
+        raise ValueError("Debe indicar catalog_db_path o ambos catalogos YAML CENHID/CENTER.")
+
+    cenhid_catalog_source = catalog_db_path if catalog_db_path is not None else cenhid_catalog_path
+    center_catalog_source = catalog_db_path if catalog_db_path is not None else center_catalog_path
+
+    if cenhid_catalog_source is None or center_catalog_source is None:
+        raise ValueError("No se pudo determinar el origen de catalogo G1.")
+
     issues: list[G1SourceIssue] = []
 
     hydro_groups = _read_cenhid_groups(
         cenhid_path=cenhid_path,
         period=period,
-        catalog_path=cenhid_catalog_path,
+        catalog_path=None if catalog_db_path is not None else cenhid_catalog_path,
+        catalog_db_path=catalog_db_path,
         issues=issues,
     )
     thermal_groups = _read_center_groups(
         center_path=center_path,
         period=period,
-        catalog_path=center_catalog_path,
+        catalog_path=None if catalog_db_path is not None else center_catalog_path,
+        catalog_db_path=catalog_db_path,
         issues=issues,
     )
     dacoce_rows = _read_dacoce_rows(
@@ -843,8 +874,8 @@ def validate_g1_sources(
         dacoce_path=dacoce_path,
         comcen_path=comcen_path,
         comcen_record_count=len(comcen_rows),
-        cenhid_catalog_path=cenhid_catalog_path,
-        center_catalog_path=center_catalog_path,
+        cenhid_catalog_path=cenhid_catalog_source,
+        center_catalog_path=center_catalog_source,
         period=period,
         hydro_group_count=len(hydro_groups),
         thermal_group_count=len(thermal_groups),

@@ -24,6 +24,7 @@ class G1Worker(QObject, WorkerFileMixin):
         output_dir: Path,
         cenhid_catalog: Path,
         center_catalog: Path,
+        g1_catalog_db: Path | None = None,
     ) -> None:
         super().__init__()
         self.action = action
@@ -32,6 +33,7 @@ class G1Worker(QObject, WorkerFileMixin):
         self.output_dir = output_dir
         self.cenhid_catalog = cenhid_catalog
         self.center_catalog = center_catalog
+        self.g1_catalog_db = g1_catalog_db
 
     def run(self) -> None:
         try:
@@ -44,8 +46,14 @@ class G1Worker(QObject, WorkerFileMixin):
             self._ensure_file(center_path)
             self._ensure_file(dacoce_path)
             self._ensure_file(comcen_path)
-            self._ensure_file(self.cenhid_catalog)
-            self._ensure_file(self.center_catalog)
+
+            g1_catalog_db = self.g1_catalog_db if self.g1_catalog_db is not None and self.g1_catalog_db.exists() else None
+
+            if g1_catalog_db is None:
+                self._ensure_file(self.cenhid_catalog)
+                self._ensure_file(self.center_catalog)
+            else:
+                self.log.emit(f"Catalogo G1 SQLite: {g1_catalog_db}")
 
             self.log.emit(f"Periodo: {self.period}")
             self.log.emit(f"CENHID: {cenhid_path}")
@@ -60,8 +68,9 @@ class G1Worker(QObject, WorkerFileMixin):
                 dacoce_path=dacoce_path,
                 comcen_path=comcen_path,
                 period=self.period,
-                cenhid_catalog_path=self.cenhid_catalog,
-                center_catalog_path=self.center_catalog,
+                cenhid_catalog_path=None if g1_catalog_db is not None else self.cenhid_catalog,
+                center_catalog_path=None if g1_catalog_db is not None else self.center_catalog,
+                catalog_db_path=g1_catalog_db,
             )
 
             self.log.emit(f"Grupos hidro: {validation.hydro_group_count}")
@@ -104,8 +113,9 @@ class G1Worker(QObject, WorkerFileMixin):
                 dacoce_path=dacoce_path,
                 comcen_path=comcen_path,
                 period=self.period,
-                cenhid_catalog_path=self.cenhid_catalog,
-                center_catalog_path=self.center_catalog,
+                cenhid_catalog_path=None if g1_catalog_db is not None else self.cenhid_catalog,
+                center_catalog_path=None if g1_catalog_db is not None else self.center_catalog,
+                catalog_db_path=g1_catalog_db,
                 output_path=output_path,
             )
 

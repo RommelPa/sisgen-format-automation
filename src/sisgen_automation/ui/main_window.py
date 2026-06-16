@@ -847,6 +847,7 @@ class MainWindow(QMainWindow):
             output_dir=Path(self.output_dir_input.text().strip()),
             cenhid_catalog=Path(self.cenhid_catalog_input.text().strip()),
             center_catalog=Path(self.center_catalog_input.text().strip()),
+            g1_catalog_db=Path(self.g1_catalog_db_input.text().strip()),
         )
 
         self.worker.moveToThread(self.worker_thread)

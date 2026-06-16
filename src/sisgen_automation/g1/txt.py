@@ -530,8 +530,9 @@ def create_g1_txt(
     dacoce_path: Path,
     comcen_path: Path,
     period: str,
-    cenhid_catalog_path: Path,
-    center_catalog_path: Path,
+    cenhid_catalog_path: Path | None = None,
+    center_catalog_path: Path | None = None,
+    catalog_db_path: Path | None = None,
     output_path: Path | None = None,
     report_date: date | None = None,
 ) -> G1TxtResult:
@@ -543,6 +544,7 @@ def create_g1_txt(
         period=period,
         cenhid_catalog_path=cenhid_catalog_path,
         center_catalog_path=center_catalog_path,
+        catalog_db_path=catalog_db_path,
     )
 
     if validation_result.has_errors:
