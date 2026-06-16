@@ -15,6 +15,7 @@ from sisgen_automation.comcen.template import (
     DEFAULT_FUEL_DESCRIPTION,
     CenterUnit,
     load_center_units,
+    load_center_units_from_db,
     parse_period,
 )
 
@@ -103,13 +104,27 @@ def validate_comcen_template(
     *,
     template_path: Path,
     period: str,
-    catalog_path: Path,
+    catalog_path: Path | None = None,
+    catalog_db_path: Path | None = None,
 ) -> ComcenTemplateValidationResult:
     if not template_path.exists():
         raise ValueError(f"No existe la plantilla COMCEN: {template_path}")
 
+    if catalog_path is None and catalog_db_path is None:
+        raise ValueError("Debes indicar catalog_path o catalog_db_path.")
+
+    if catalog_path is not None and catalog_db_path is not None:
+        raise ValueError("Use solo un origen de catalogo: YAML o SQLite.")
+
     expected_year, expected_month = parse_period(period)
-    catalog_units = load_center_units(catalog_path)
+
+    if catalog_db_path is not None:
+        catalog_units = load_center_units_from_db(catalog_db_path)
+    else:
+        if catalog_path is None:
+            raise ValueError("Debes indicar catalog_path.")
+        catalog_units = load_center_units(catalog_path)
+
     expected_catalog_keys = {_catalog_key(unit) for unit in catalog_units}
 
     workbook = load_workbook(template_path, data_only=True)

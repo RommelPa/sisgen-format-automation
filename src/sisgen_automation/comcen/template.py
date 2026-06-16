@@ -196,7 +196,7 @@ def create_comcen_template(
             "CNOMNUM": unit.cnomnum,
             "CCODCOM": DEFAULT_FUEL_CODE,
             "CDESCOM": DEFAULT_FUEL_DESCRIPTION,
-            "NTOTCOM": None,
+            "NTOTCOM": 0,
         }
 
         for col_index, header in enumerate(COMCEN_HEADERS, start=1):

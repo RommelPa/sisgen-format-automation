@@ -203,14 +203,14 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
             self._template_path("CENTER"),
             self._template_path("DACOCE"),
             self._template_path("COMCEN"),
-            self.center_catalog,
         ]:
             self._ensure_file(path)
 
         if g1_catalog_db is None:
             self._ensure_file(self.cenhid_catalog)
+            self._ensure_file(self.center_catalog)
         else:
-            self.log.emit(f"Catalogo G1 SQLite para CENHID/CENTER: {g1_catalog_db}")
+            self.log.emit(f"Catalogo G1 SQLite para CENHID/CENTER/COMCEN: {g1_catalog_db}")
 
         results = [
             ("CENHID", validate_cenhid_template(
@@ -232,7 +232,8 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
             ("COMCEN", validate_comcen_template(
                 template_path=self._template_path("COMCEN"),
                 period=self.period,
-                catalog_path=self.center_catalog,
+                catalog_path=None if g1_catalog_db is not None else self.center_catalog,
+                catalog_db_path=g1_catalog_db,
             )),
         ]
 
@@ -268,7 +269,8 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
             source_dbf_path=self._source_path("COMCEN"),
             template_path=self._template_path("COMCEN"),
             period=self.period,
-            catalog_path=self.center_catalog,
+            catalog_path=None if g1_catalog_db is not None else self.center_catalog,
+            catalog_db_path=g1_catalog_db,
             output_path=self.output_dbf_dir / "COMCEN.DBF",
         )))
 
