@@ -343,14 +343,8 @@ class MainWindow(QMainWindow):
             "Carpeta TXT generados:",
             self._path_row(self.output_dir_input, self._select_output_dir),
         )
-        form.addRow(
-            "Catálogo CENHID:",
-            self._path_row(self.cenhid_catalog_input, self._select_cenhid_catalog),
-        )
-        form.addRow(
-            "Catálogo CENTER:",
-            self._path_row(self.center_catalog_input, self._select_center_catalog),
-        )
+        # Catalogo G1 usa SQLite interno.
+        # Las rutas YAML CENHID/CENTER se mantienen solo como respaldo tecnico.
         form.addRow(
             "Catálogo U2:",
             self._path_row(self.u2_catalog_input, self._select_u2_catalog),
