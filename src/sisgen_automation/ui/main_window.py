@@ -62,9 +62,6 @@ class MainWindow(QMainWindow):
         self.templates_dir_input = QLineEdit(str(Path("reports/templates")))
         self.report_dbf_dir_input = QLineEdit(str(Path("reports/dbf/2025-12")))
         self.output_dir_input = QLineEdit(str(Path("reports/txt/2025-12")))
-        self.cenhid_catalog_input = QLineEdit(str(Path("config/local/cenhid_units.yaml")))
-        self.center_catalog_input = QLineEdit(str(Path("config/local/center_units.yaml")))
-        self.g1_catalog_db_input = QLineEdit(str(Path("data/catalogs/sisgen_catalogs.db")))
         self.u2_catalog_input = QLineEdit(str(Path("config/local/u2_ciiu.yaml")))
         self.g2_catalog_input = QLineEdit(str(Path("config/local/g2_distributors.yaml")))
         self.g7_catalog_input = QLineEdit(str(Path("config/local/g7_units.yaml")))
@@ -703,18 +700,6 @@ class MainWindow(QMainWindow):
     def _select_report_dbf_dir(self) -> None:
         self._select_directory(self.report_dbf_dir_input)
 
-    def _select_cenhid_catalog(self) -> None:
-        self._select_file(self.cenhid_catalog_input, "YAML (*.yaml *.yml)")
-
-    def _select_center_catalog(self) -> None:
-        self._select_file(self.center_catalog_input, "YAML (*.yaml *.yml)")
-
-    def _select_g1_catalog_db(self) -> None:
-        self._select_file(
-            self.g1_catalog_db_input,
-            "SQLite (*.db *.sqlite *.sqlite3);;Todos (*.*)",
-        )
-
     def _select_u2_catalog(self) -> None:
         self._select_file(self.u2_catalog_input, "YAML (*.yaml *.yml)")
 
@@ -761,9 +746,9 @@ class MainWindow(QMainWindow):
             raw_dir=Path(self.raw_dir_input.text().strip()),
             output_dir=Path(self.templates_dir_input.text().strip()),
             format_key=format_key,
-            cenhid_catalog=Path(self.cenhid_catalog_input.text().strip()),
-            center_catalog=Path(self.center_catalog_input.text().strip()),
-            g1_catalog_db=Path(self.g1_catalog_db_input.text().strip()),
+            cenhid_catalog=Path("config/local/cenhid_units.yaml"),
+            center_catalog=Path("config/local/center_units.yaml"),
+            g1_catalog_db=Path("data/catalogs/sisgen_catalogs.db"),
             u2_catalog=Path(self.u2_catalog_input.text().strip()),
             g2_catalog=Path(self.g2_catalog_input.text().strip()),
             g7_catalog=Path(self.g7_catalog_input.text().strip()),
@@ -800,14 +785,14 @@ class MainWindow(QMainWindow):
             output_dir=Path(self.report_dbf_dir_input.text().strip()),
             templates_dir=Path(self.templates_dir_input.text().strip()),
             format_key=format_key,
-            cenhid_catalog=Path(self.cenhid_catalog_input.text().strip()),
-            center_catalog=Path(self.center_catalog_input.text().strip()),
+            cenhid_catalog=Path("config/local/cenhid_units.yaml"),
+            center_catalog=Path("config/local/center_units.yaml"),
             u2_catalog=Path(self.u2_catalog_input.text().strip()),
             g2_catalog=Path(self.g2_catalog_input.text().strip()),
             g7_catalog=Path(self.g7_catalog_input.text().strip()),
             g8_catalog=Path(self.g8_catalog_input.text().strip()),
             g11_catalog=Path(self.g11_catalog_input.text().strip()),
-            g1_catalog_db=Path(self.g1_catalog_db_input.text().strip()),
+            g1_catalog_db=Path("data/catalogs/sisgen_catalogs.db"),
         )
 
         self.worker.moveToThread(self.worker_thread)
@@ -839,9 +824,9 @@ class MainWindow(QMainWindow):
             period=self.period_input.text().strip(),
             raw_dir=Path(self.report_dbf_dir_input.text().strip()),
             output_dir=Path(self.output_dir_input.text().strip()),
-            cenhid_catalog=Path(self.cenhid_catalog_input.text().strip()),
-            center_catalog=Path(self.center_catalog_input.text().strip()),
-            g1_catalog_db=Path(self.g1_catalog_db_input.text().strip()),
+            cenhid_catalog=Path("config/local/cenhid_units.yaml"),
+            center_catalog=Path("config/local/center_units.yaml"),
+            g1_catalog_db=Path("data/catalogs/sisgen_catalogs.db"),
         )
 
         self.worker.moveToThread(self.worker_thread)
