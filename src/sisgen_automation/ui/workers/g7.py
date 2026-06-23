@@ -55,7 +55,14 @@ class G7Worker(QObject, WorkerFileMixin):
             self.log.emit(f"COMNET: {comnet_path}")
             self.log.emit(f"TRAENE: {traene_path}")
             self.log.emit(f"VALENE: {valene_path}")
-            self.log.emit(f"Catálogo G7: {self.g7_catalog}")
+
+            g7_catalog_db = Path("data/catalogs/sisgen_catalogs.db")
+            if g7_catalog_db.exists():
+                self.log.emit(f"Catalogo G7 SQLite: {g7_catalog_db}")
+            else:
+                g7_catalog_db = None
+                self.log.emit(f"Catalogo G7 YAML: {self.g7_catalog}")
+
             self.log.emit("Validando fuentes G7...")
 
             validation = validate_g7_sources(
@@ -65,7 +72,8 @@ class G7Worker(QObject, WorkerFileMixin):
                 traene_path=traene_path,
                 valene_path=valene_path,
                 period=self.period,
-                catalog_path=self.g7_catalog,
+                catalog_path=None if g7_catalog_db is not None else self.g7_catalog,
+                catalog_db_path=g7_catalog_db,
             )
 
             self.log.emit(f"Compras energía COMENE: {len(validation.purchases)}")
@@ -109,7 +117,8 @@ class G7Worker(QObject, WorkerFileMixin):
                 traene_path=traene_path,
                 valene_path=valene_path,
                 period=self.period,
-                catalog_path=self.g7_catalog,
+                catalog_path=None if g7_catalog_db is not None else self.g7_catalog,
+                catalog_db_path=g7_catalog_db,
                 output_path=output_path,
             )
 
