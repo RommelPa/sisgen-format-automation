@@ -69,10 +69,15 @@ def register_g2_commands(app: typer.Typer, console: Console) -> None:
             help="Periodo a validar en formato YYYY-MM. Ejemplo: 2026-01.",
         ),
         catalog: Path = typer.Option(
-            ...,
+            Path("config/local/g2_distributors.yaml"),
             "--catalog",
             "-c",
             help="Ruta del catálogo local G2 en YAML.",
+        ),
+        catalog_db: Path = typer.Option(
+            Path("data/catalogs/sisgen_catalogs.db"),
+            "--catalog-db",
+            help="Ruta de la base SQLite de cat?logos SISGEN.",
         ),
         fail_on_errors: bool = typer.Option(
             False,
@@ -84,8 +89,9 @@ def register_g2_commands(app: typer.Typer, console: Console) -> None:
         try:
             result = validate_g2_sources(
                 vepoen_path=vepoen,
-                catalog_path=catalog,
                 period=period,
+                catalog_path=catalog,
+                catalog_db_path=catalog_db,
             )
         except ValueError as error:
             console.print(f"[bold red]Error:[/bold red] {error}")
@@ -131,10 +137,15 @@ def register_g2_commands(app: typer.Typer, console: Console) -> None:
             help="Periodo a generar en formato YYYY-MM. Ejemplo: 2025-12.",
         ),
         catalog: Path = typer.Option(
-            ...,
+            Path("config/local/g2_distributors.yaml"),
             "--catalog",
             "-c",
             help="Ruta del catálogo local G2 en YAML.",
+        ),
+        catalog_db: Path = typer.Option(
+            Path("data/catalogs/sisgen_catalogs.db"),
+            "--catalog-db",
+            help="Ruta de la base SQLite de cat?logos SISGEN.",
         ),
         output: Optional[Path] = typer.Option(
             None,
@@ -149,6 +160,7 @@ def register_g2_commands(app: typer.Typer, console: Console) -> None:
                 vepoen_path=vepoen,
                 period=period,
                 catalog_path=catalog,
+                catalog_db_path=catalog_db,
                 output_path=output,
             )
         except ValueError as error:
@@ -244,10 +256,15 @@ def register_g2_commands(app: typer.Typer, console: Console) -> None:
             help="Ruta del VEPOEN.DBF histórico fuente.",
         ),
         catalog: Path = typer.Option(
-            ...,
+            Path("config/local/g2_distributors.yaml"),
             "--catalog",
             "-c",
             help="Ruta del catálogo local G2 en YAML.",
+        ),
+        catalog_db: Path = typer.Option(
+            Path("data/catalogs/sisgen_catalogs.db"),
+            "--catalog-db",
+            help="Ruta de la base SQLite de cat?logos SISGEN.",
         ),
         base_period: Optional[str] = typer.Option(
             None,
@@ -290,10 +307,15 @@ def register_g2_commands(app: typer.Typer, console: Console) -> None:
             help="Periodo esperado en formato YYYY-MM. Ejemplo: 2026-01.",
         ),
         catalog: Path = typer.Option(
-            ...,
+            Path("config/local/g2_distributors.yaml"),
             "--catalog",
             "-c",
             help="Ruta del catálogo local G2 en YAML.",
+        ),
+        catalog_db: Path = typer.Option(
+            Path("data/catalogs/sisgen_catalogs.db"),
+            "--catalog-db",
+            help="Ruta de la base SQLite de cat?logos SISGEN.",
         ),
         fail_on_errors: bool = typer.Option(
             False,
@@ -335,10 +357,15 @@ def register_g2_commands(app: typer.Typer, console: Console) -> None:
             help="Periodo a agregar en formato YYYY-MM. Ejemplo: 2026-01.",
         ),
         catalog: Path = typer.Option(
-            ...,
+            Path("config/local/g2_distributors.yaml"),
             "--catalog",
             "-c",
             help="Ruta del catálogo local G2 en YAML.",
+        ),
+        catalog_db: Path = typer.Option(
+            Path("data/catalogs/sisgen_catalogs.db"),
+            "--catalog-db",
+            help="Ruta de la base SQLite de cat?logos SISGEN.",
         ),
         output: Optional[Path] = typer.Option(
             None,
