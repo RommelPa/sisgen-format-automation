@@ -749,6 +749,7 @@ class MainWindow(QMainWindow):
             cenhid_catalog=Path("config/local/cenhid_units.yaml"),
             center_catalog=Path("config/local/center_units.yaml"),
             g1_catalog_db=Path("data/catalogs/sisgen_catalogs.db"),
+            g2_catalog_db=Path("data/catalogs/sisgen_catalogs.db"),
             u2_catalog=Path(self.u2_catalog_input.text().strip()),
             g2_catalog=Path(self.g2_catalog_input.text().strip()),
             g7_catalog=Path(self.g7_catalog_input.text().strip()),
@@ -793,6 +794,7 @@ class MainWindow(QMainWindow):
             g8_catalog=Path(self.g8_catalog_input.text().strip()),
             g11_catalog=Path(self.g11_catalog_input.text().strip()),
             g1_catalog_db=Path("data/catalogs/sisgen_catalogs.db"),
+            g2_catalog_db=Path("data/catalogs/sisgen_catalogs.db"),
         )
 
         self.worker.moveToThread(self.worker_thread)
@@ -858,6 +860,7 @@ class MainWindow(QMainWindow):
             vepoen_path=Path(self.report_dbf_dir_input.text().strip()) / "VEPOEN.DBF",
             output_dir=Path(self.output_dir_input.text().strip()),
             g2_catalog=Path(self.g2_catalog_input.text().strip()),
+            g2_catalog_db=Path("data/catalogs/sisgen_catalogs.db"),
         )
 
         self.worker.moveToThread(self.worker_thread)

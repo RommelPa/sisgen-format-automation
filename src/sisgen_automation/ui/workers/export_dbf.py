@@ -62,6 +62,7 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
         g8_catalog: Path,
         g11_catalog: Path,
         g1_catalog_db: Path | None = None,
+        g2_catalog_db: Path | None = None,
     ) -> None:
         super().__init__()
         self.period = period
@@ -77,6 +78,7 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
         self.g8_catalog = g8_catalog
         self.g11_catalog = g11_catalog
         self.g1_catalog_db = g1_catalog_db
+        self.g2_catalog_db = g2_catalog_db
 
     @property
     def templates_dir(self) -> Path:
@@ -276,28 +278,44 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
 
         return exported
 
+    def _g2_catalog_db_or_none(self) -> Path | None:
+        if self.g2_catalog_db is not None and self.g2_catalog_db.exists():
+            return self.g2_catalog_db
+
+        return None
+
     def _validate_g2(self) -> bool:
+        g2_catalog_db = self._g2_catalog_db_or_none()
+
         for path in [
             self._source_path("VEPOEN"),
             self._template_path("VEPOEN"),
-            self.g2_catalog,
         ]:
             self._ensure_file(path)
+
+        if g2_catalog_db is None:
+            self._ensure_file(self.g2_catalog)
+        else:
+            self.log.emit(f"Catalogo G2 SQLite para VEPOEN: {g2_catalog_db}")
 
         result = validate_vepoen_template(
             template_path=self._template_path("VEPOEN"),
             period=self.period,
-            catalog_path=self.g2_catalog,
+            catalog_path=None if g2_catalog_db is not None else self.g2_catalog,
+            catalog_db_path=g2_catalog_db,
         )
 
         return self._validate_result("VEPOEN", result)
 
     def _export_g2(self) -> list[str]:
+        g2_catalog_db = self._g2_catalog_db_or_none()
+
         return [self._export_result("VEPOEN", lambda: export_vepoen_dbf(
             source_dbf_path=self._source_path("VEPOEN"),
             template_path=self._template_path("VEPOEN"),
             period=self.period,
-            catalog_path=self.g2_catalog,
+            catalog_path=None if g2_catalog_db is not None else self.g2_catalog,
+            catalog_db_path=g2_catalog_db,
             output_path=self.output_dbf_dir / "VEPOEN.DBF",
         ))]
 

@@ -23,6 +23,7 @@ class G2Worker(QObject, WorkerFileMixin):
         vepoen_path: Path,
         output_dir: Path,
         g2_catalog: Path,
+        g2_catalog_db: Path | None = None,
     ) -> None:
         super().__init__()
         self.action = action
@@ -30,11 +31,15 @@ class G2Worker(QObject, WorkerFileMixin):
         self.vepoen_path = vepoen_path
         self.output_dir = output_dir
         self.g2_catalog = g2_catalog
+        self.g2_catalog_db = g2_catalog_db
 
     def run(self) -> None:
         try:
             self._ensure_file(self.vepoen_path)
-            self._ensure_file(self.g2_catalog)
+
+            g2_catalog_db = self._g2_catalog_db_or_none()
+            if g2_catalog_db is None:
+                self._ensure_file(self.g2_catalog)
 
             self.log.emit(f"Periodo: {self.period}")
             self.log.emit(f"VEPOEN: {self.vepoen_path}")
@@ -80,7 +85,8 @@ class G2Worker(QObject, WorkerFileMixin):
             result = create_g2_txt(
                 vepoen_path=self.vepoen_path,
                 period=self.period,
-                catalog_path=self.g2_catalog,
+                catalog_path=None if g2_catalog_db is not None else self.g2_catalog,
+                catalog_db_path=g2_catalog_db,
                 output_path=output_path,
             )
 

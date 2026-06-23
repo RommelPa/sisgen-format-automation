@@ -45,6 +45,7 @@ class TemplateWorker(QObject, WorkerFileMixin):
         g8_catalog: Path,
         g11_catalog: Path,
         g1_catalog_db: Path | None = None,
+        g2_catalog_db: Path | None = None,
     ) -> None:
         super().__init__()
         self.period = period
@@ -59,6 +60,7 @@ class TemplateWorker(QObject, WorkerFileMixin):
         self.g8_catalog = g8_catalog
         self.g11_catalog = g11_catalog
         self.g1_catalog_db = g1_catalog_db
+        self.g2_catalog_db = g2_catalog_db
 
     def _wants(self, format_key: str) -> bool:
         return self.format_key == "ALL" or self.format_key == format_key
@@ -147,15 +149,25 @@ class TemplateWorker(QObject, WorkerFileMixin):
                 generated.append("COMCEN")
 
             if self._wants("G2"):
-                self._ensure_file(self.g2_catalog)
                 self._ensure_file(vepoen_path)
 
+                g2_catalog_db = None
+                if self.g2_catalog_db is not None and self.g2_catalog_db.exists():
+                    g2_catalog_db = self.g2_catalog_db
+                else:
+                    self._ensure_file(self.g2_catalog)
+
                 self.log.emit("Generando plantillas G2...")
+                if g2_catalog_db is not None:
+                    self.log.emit(f"Catalogo G2 SQLite: {g2_catalog_db}")
+                else:
+                    self.log.emit(f"Catalogo G2 YAML: {self.g2_catalog}")
 
                 vepoen_output = create_vepoen_template(
                     period=self.period,
                     source_dbf_path=vepoen_path,
-                    catalog_path=self.g2_catalog,
+                    catalog_path=None if g2_catalog_db is not None else self.g2_catalog,
+                    catalog_db_path=g2_catalog_db,
                     base_period=None,
                     output_path=templates_dir / f"VEPOEN_{period_label}_template.xlsx",
                 )
