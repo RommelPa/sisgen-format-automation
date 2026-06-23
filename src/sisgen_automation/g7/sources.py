@@ -446,7 +446,7 @@ def _validate_comnet_rows(
         elif cnomdis != party.cnomdis:
             _add_issue(
                 issues,
-                severity=G7SourceSeverity.ERROR,
+                severity=G7SourceSeverity.WARNING,
                 section="COMNET",
                 source=source,
                 field="CNOMDIS",
@@ -488,11 +488,11 @@ def _validate_comnet_rows(
     for ccoddis in sorted(expected_keys - seen):
         _add_issue(
             issues,
-            severity=G7SourceSeverity.ERROR,
+            severity=G7SourceSeverity.WARNING,
             section="COMNET",
             source="COMNET",
             field="CCODDIS",
-            message="Falta distribuidora esperada para el periodo.",
+            message="Distribuidora del catalogo sin registro COMNET para el periodo.",
             value=ccoddis,
         )
 
