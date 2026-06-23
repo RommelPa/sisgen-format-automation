@@ -6,7 +6,22 @@ from pathlib import Path
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill, Protection
 
-from sisgen_automation.g7.catalog import load_g7_catalog
+from sisgen_automation.g7.catalog import load_g7_catalog, load_g7_catalog_from_db
+
+
+
+def _load_g7_template_catalog(
+    *,
+    catalog_path: Path | None,
+    catalog_db_path: Path | None,
+):
+    if catalog_db_path is not None:
+        return load_g7_catalog_from_db(catalog_db_path)
+
+    if catalog_path is not None:
+        return load_g7_catalog(catalog_path)
+
+    raise ValueError("Debe indicar catalog_path o catalog_db_path para G7.")
 
 
 TRAENE_HEADERS = [
@@ -55,11 +70,15 @@ def default_traene_template_path(period: str) -> Path:
 def create_traene_template(
     *,
     period: str,
-    catalog_path: Path,
+    catalog_path: Path | None = None,
+    catalog_db_path: Path | None = None,
     output_path: Path | None = None,
 ) -> TraeneTemplateResult:
     year_short, month = parse_period(period)
-    catalog = load_g7_catalog(catalog_path)
+    catalog = _load_g7_template_catalog(
+        catalog_path=catalog_path,
+        catalog_db_path=catalog_db_path,
+    )
 
     if output_path is None:
         output_path = default_traene_template_path(period)

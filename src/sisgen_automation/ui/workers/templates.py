@@ -175,13 +175,20 @@ class TemplateWorker(QObject, WorkerFileMixin):
                 generated.append("VEPOEN")
 
             if self._wants("G7"):
-                self._ensure_file(self.g7_catalog)
+                g7_catalog_db = Path("data/catalogs/sisgen_catalogs.db")
+                if g7_catalog_db.exists():
+                    self.log.emit(f"Catalogo G7 SQLite: {g7_catalog_db}")
+                else:
+                    g7_catalog_db = None
+                    self._ensure_file(self.g7_catalog)
+                    self.log.emit(f"Catalogo G7 YAML: {self.g7_catalog}")
 
                 self.log.emit("Generando plantillas G7...")
 
                 comene_output = create_comene_template(
                     period=self.period,
-                    catalog_path=self.g7_catalog,
+                    catalog_path=None if g7_catalog_db is not None else self.g7_catalog,
+                    catalog_db_path=g7_catalog_db,
                     output_path=templates_dir / f"COMENE_{period_label}_template.xlsx",
                 )
                 self.log.emit(f"COMENE: {comene_output.output_path}")
@@ -189,7 +196,8 @@ class TemplateWorker(QObject, WorkerFileMixin):
 
                 venene_output = create_venene_template(
                     period=self.period,
-                    catalog_path=self.g7_catalog,
+                    catalog_path=None if g7_catalog_db is not None else self.g7_catalog,
+                    catalog_db_path=g7_catalog_db,
                     output_path=templates_dir / f"VENENE_{period_label}_template.xlsx",
                 )
                 self.log.emit(f"VENENE: {venene_output.output_path}")
@@ -197,7 +205,8 @@ class TemplateWorker(QObject, WorkerFileMixin):
 
                 comnet_output = create_comnet_template(
                     period=self.period,
-                    catalog_path=self.g7_catalog,
+                    catalog_path=None if g7_catalog_db is not None else self.g7_catalog,
+                    catalog_db_path=g7_catalog_db,
                     output_path=templates_dir / f"COMNET_{period_label}_template.xlsx",
                 )
                 self.log.emit(f"COMNET: {comnet_output.output_path}")
@@ -205,7 +214,8 @@ class TemplateWorker(QObject, WorkerFileMixin):
 
                 traene_output = create_traene_template(
                     period=self.period,
-                    catalog_path=self.g7_catalog,
+                    catalog_path=None if g7_catalog_db is not None else self.g7_catalog,
+                    catalog_db_path=g7_catalog_db,
                     output_path=templates_dir / f"TRAENE_{period_label}_template.xlsx",
                 )
                 self.log.emit(f"TRAENE: {traene_output.output_path}")
@@ -213,7 +223,8 @@ class TemplateWorker(QObject, WorkerFileMixin):
 
                 valene_output = create_valene_template(
                     period=self.period,
-                    catalog_path=self.g7_catalog,
+                    catalog_path=None if g7_catalog_db is not None else self.g7_catalog,
+                    catalog_db_path=g7_catalog_db,
                     output_path=templates_dir / f"VALENE_{period_label}_template.xlsx",
                 )
                 self.log.emit(f"VALENE: {valene_output.output_path}")
