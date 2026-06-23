@@ -186,7 +186,8 @@ def export_valene_dbf(
     source_dbf_path: Path,
     template_path: Path,
     period: str,
-    catalog_path: Path,
+    catalog_path: Path | None = None,
+    catalog_db_path: Path | None = None,
     output_path: Path | None = None,
     allow_existing_period: bool = False,
 ) -> ValeneExportResult:
@@ -194,6 +195,7 @@ def export_valene_dbf(
         template_path=template_path,
         period=period,
         catalog_path=catalog_path,
+        catalog_db_path=catalog_db_path,
     )
 
     if validation_result.has_errors:
