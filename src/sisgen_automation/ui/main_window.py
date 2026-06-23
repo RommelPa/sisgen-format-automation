@@ -24,8 +24,11 @@ from PySide6.QtWidgets import (
 )
 
 from sisgen_automation.catalogs.g1_repository import (
+    create_g1_unit,
+    get_g1_unit,
     list_g1_units,
     set_g1_unit_active,
+    update_g1_unit,
 )
 from sisgen_automation.catalogs.g2_repository import (
     create_g2_distributor,
@@ -92,6 +95,8 @@ class MainWindow(QMainWindow):
         self.generate_u2_templates_button = QPushButton("Generar U2")
         self.generate_g11_templates_button = QPushButton("Generar G11")
         self.generate_templates_button = QPushButton("Generar todas")
+        self.new_g1_unit_button = QPushButton("Nuevo")
+        self.edit_g1_unit_button = QPushButton("Editar")
         self.activate_g1_unit_button = QPushButton("Activar")
         self.deactivate_g1_unit_button = QPushButton("Desactivar")
         self.new_g2_distributor_button = QPushButton("Nuevo")
@@ -176,6 +181,8 @@ class MainWindow(QMainWindow):
             self.validate_g8_button,
             self.validate_u2_button,
             self.validate_g11_button,
+            self.new_g1_unit_button,
+            self.edit_g1_unit_button,
             self.activate_g1_unit_button,
             self.deactivate_g1_unit_button,
             self.new_g2_distributor_button,
@@ -532,6 +539,8 @@ class MainWindow(QMainWindow):
         description.setWordWrap(True)
 
         actions = QHBoxLayout()
+        actions.addWidget(self.new_g1_unit_button)
+        actions.addWidget(self.edit_g1_unit_button)
         actions.addWidget(self.activate_g1_unit_button)
         actions.addWidget(self.deactivate_g1_unit_button)
         actions.addStretch()
@@ -597,6 +606,254 @@ class MainWindow(QMainWindow):
         except ValueError:
             self._append_log(f"ID de unidad invalido: {item.text()}")
             return None
+
+    def _prompt_g1_unit_values(
+        self,
+        *,
+        title: str,
+        source_format: str = "CENHID",
+        central: str = "",
+        ccodcon: str = "",
+        ccodcen: str = "",
+        ctipgru: str = "",
+        cnomnum: str = "",
+        npotins: str = "",
+        npotefe: str = "",
+        notes: str = "",
+    ) -> tuple[str, str, str, str, str, str, str, str, str] | None:
+        formats = ["CENHID", "CENTER"]
+        current_index = formats.index(source_format) if source_format in formats else 0
+
+        selected_format, ok = QInputDialog.getItem(
+            self,
+            title,
+            "Formato:",
+            formats,
+            current_index,
+            False,
+        )
+        if not ok:
+            return None
+
+        clean_central, ok = QInputDialog.getText(
+            self,
+            title,
+            "Nombre de central:",
+            QLineEdit.EchoMode.Normal,
+            central,
+        )
+        if not ok:
+            return None
+
+        clean_ccodcon, ok = QInputDialog.getText(
+            self,
+            title,
+            "Codigo CCODCON:",
+            QLineEdit.EchoMode.Normal,
+            ccodcon,
+        )
+        if not ok:
+            return None
+
+        clean_ccodcen, ok = QInputDialog.getText(
+            self,
+            title,
+            "Codigo CCODCEN:",
+            QLineEdit.EchoMode.Normal,
+            ccodcen,
+        )
+        if not ok:
+            return None
+
+        clean_ctipgru, ok = QInputDialog.getText(
+            self,
+            title,
+            "Tipo / tecnologia CTIPGRU:",
+            QLineEdit.EchoMode.Normal,
+            ctipgru,
+        )
+        if not ok:
+            return None
+
+        clean_cnomnum, ok = QInputDialog.getText(
+            self,
+            title,
+            "Nombre de unidad:",
+            QLineEdit.EchoMode.Normal,
+            cnomnum,
+        )
+        if not ok:
+            return None
+
+        clean_npotins, ok = QInputDialog.getText(
+            self,
+            title,
+            "NPOTINS:",
+            QLineEdit.EchoMode.Normal,
+            npotins,
+        )
+        if not ok:
+            return None
+
+        clean_npotefe, ok = QInputDialog.getText(
+            self,
+            title,
+            "NPOTEFE:",
+            QLineEdit.EchoMode.Normal,
+            npotefe,
+        )
+        if not ok:
+            return None
+
+        clean_notes, ok = QInputDialog.getText(
+            self,
+            title,
+            "Notas:",
+            QLineEdit.EchoMode.Normal,
+            notes,
+        )
+        if not ok:
+            return None
+
+        selected_format = selected_format.strip().upper()
+        clean_central = clean_central.strip()
+        clean_ccodcon = clean_ccodcon.strip()
+        clean_ccodcen = clean_ccodcen.strip()
+        clean_ctipgru = clean_ctipgru.strip()
+        clean_cnomnum = clean_cnomnum.strip()
+        clean_npotins = clean_npotins.strip()
+        clean_npotefe = clean_npotefe.strip()
+        clean_notes = clean_notes.strip()
+
+        if not clean_central or not clean_ccodcon or not clean_ccodcen or not clean_cnomnum:
+            QMessageBox.warning(
+                self,
+                "Catalogo G1",
+                "Formato, central, CCODCON, CCODCEN y nombre de unidad son obligatorios.",
+            )
+            return None
+
+        return (
+            selected_format,
+            clean_central,
+            clean_ccodcon,
+            clean_ccodcen,
+            clean_ctipgru,
+            clean_cnomnum,
+            clean_npotins,
+            clean_npotefe,
+            clean_notes,
+        )
+
+    def _create_g1_unit(self) -> None:
+        values = self._prompt_g1_unit_values(title="Nueva unidad G1")
+        if values is None:
+            return
+
+        (
+            source_format,
+            central,
+            ccodcon,
+            ccodcen,
+            ctipgru,
+            cnomnum,
+            npotins,
+            npotefe,
+            notes,
+        ) = values
+
+        catalog_db = Path("data/catalogs/sisgen_catalogs.db")
+
+        try:
+            unit = create_g1_unit(
+                catalog_db,
+                source_format=source_format,
+                central=central,
+                ccodcon=ccodcon,
+                ccodcen=ccodcen,
+                ctipgru=ctipgru,
+                cnomnum=cnomnum,
+                npotins=npotins,
+                npotefe=npotefe,
+                notes=notes,
+                active=True,
+            )
+        except (FileNotFoundError, ValueError) as error:
+            QMessageBox.warning(self, "Catalogo G1", str(error))
+            self._append_log(f"No se pudo crear unidad G1: {error}")
+            return
+
+        self._append_log(
+            f"Unidad creada: id={unit['id']} {unit['source_format']} "
+            f"{unit['central']} {unit['cnomnum']}"
+        )
+        self._refresh_g1_catalog_table()
+
+    def _edit_selected_g1_unit(self) -> None:
+        unit_id = self._selected_g1_catalog_id()
+        if unit_id is None:
+            return
+
+        catalog_db = Path("data/catalogs/sisgen_catalogs.db")
+
+        try:
+            current = get_g1_unit(catalog_db, unit_id=unit_id)
+        except (FileNotFoundError, ValueError) as error:
+            QMessageBox.warning(self, "Catalogo G1", str(error))
+            self._append_log(f"No se pudo leer unidad G1: {error}")
+            return
+
+        values = self._prompt_g1_unit_values(
+            title="Editar unidad G1",
+            source_format=str(current["source_format"]),
+            central=str(current["central"]),
+            ccodcon=str(current["ccodcon"]),
+            ccodcen=str(current["ccodcen"]),
+            ctipgru=str(current["ctipgru"] or ""),
+            cnomnum=str(current["cnomnum"]),
+            npotins=str(current["npotins"] or ""),
+            npotefe=str(current["npotefe"] or ""),
+            notes=str(current["notes"] or ""),
+        )
+        if values is None:
+            return
+
+        (
+            source_format,
+            central,
+            ccodcon,
+            ccodcen,
+            ctipgru,
+            cnomnum,
+            npotins,
+            npotefe,
+            notes,
+        ) = values
+
+        try:
+            unit = update_g1_unit(
+                catalog_db,
+                unit_id=unit_id,
+                source_format=source_format,
+                central=central,
+                ccodcon=ccodcon,
+                ccodcen=ccodcen,
+                ctipgru=ctipgru,
+                cnomnum=cnomnum,
+                npotins=npotins,
+                npotefe=npotefe,
+                notes=notes,
+            )
+        except (FileNotFoundError, ValueError) as error:
+            QMessageBox.warning(self, "Catalogo G1", str(error))
+            self._append_log(f"No se pudo editar unidad G1: {error}")
+            return
+
+        self._append_log(
+            f"Unidad editada: id={unit['id']} {unit['source_format']} "
+            f"{unit['central']} {unit['cnomnum']}"
+        )
+        self._refresh_g1_catalog_table()
 
     def _set_selected_g1_active(self, active: bool) -> None:
         unit_id = self._selected_g1_catalog_id()
@@ -891,6 +1148,8 @@ class MainWindow(QMainWindow):
         self.generate_u2_templates_button.clicked.connect(lambda: self._start_template_worker("U2"))
         self.generate_g11_templates_button.clicked.connect(lambda: self._start_template_worker("G11"))
         self.generate_templates_button.clicked.connect(lambda: self._start_template_worker("ALL"))
+        self.new_g1_unit_button.clicked.connect(self._create_g1_unit)
+        self.edit_g1_unit_button.clicked.connect(self._edit_selected_g1_unit)
         self.activate_g1_unit_button.clicked.connect(lambda: self._set_selected_g1_active(True))
         self.deactivate_g1_unit_button.clicked.connect(lambda: self._set_selected_g1_active(False))
         self.new_g2_distributor_button.clicked.connect(self._create_g2_distributor)
