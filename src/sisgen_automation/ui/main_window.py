@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QLineEdit,
     QMainWindow,
@@ -27,8 +28,10 @@ from sisgen_automation.catalogs.g1_repository import (
     set_g1_unit_active,
 )
 from sisgen_automation.catalogs.g2_repository import (
+    create_g2_distributor,
     list_g2_distributors,
     set_g2_distributor_active,
+    update_g2_distributor,
 )
 from sisgen_automation.ui.workers.export_dbf import ExportDbfWorker
 from sisgen_automation.ui.workers.g1 import G1Worker
@@ -91,6 +94,8 @@ class MainWindow(QMainWindow):
         self.generate_templates_button = QPushButton("Generar todas")
         self.activate_g1_unit_button = QPushButton("Activar")
         self.deactivate_g1_unit_button = QPushButton("Desactivar")
+        self.new_g2_distributor_button = QPushButton("Nuevo")
+        self.edit_g2_distributor_button = QPushButton("Editar")
         self.activate_g2_distributor_button = QPushButton("Activar")
         self.deactivate_g2_distributor_button = QPushButton("Desactivar")
         self.export_g1_dbf_button = QPushButton("Exportar G1")
@@ -173,6 +178,8 @@ class MainWindow(QMainWindow):
             self.validate_g11_button,
             self.activate_g1_unit_button,
             self.deactivate_g1_unit_button,
+            self.new_g2_distributor_button,
+            self.edit_g2_distributor_button,
             self.activate_g2_distributor_button,
             self.deactivate_g2_distributor_button,
         ]
@@ -623,6 +630,8 @@ class MainWindow(QMainWindow):
         description.setWordWrap(True)
 
         actions = QHBoxLayout()
+        actions.addWidget(self.new_g2_distributor_button)
+        actions.addWidget(self.edit_g2_distributor_button)
         actions.addWidget(self.activate_g2_distributor_button)
         actions.addWidget(self.deactivate_g2_distributor_button)
         actions.addStretch()
@@ -684,6 +693,130 @@ class MainWindow(QMainWindow):
         except ValueError:
             self._append_log(f"ID de distribuidora invalido: {item.text()}")
             return None
+
+    def _prompt_g2_distributor_values(
+        self,
+        *,
+        title: str,
+        ccoddis: str = "",
+        display_name: str = "",
+        notes: str = "",
+    ) -> tuple[str, str, str] | None:
+        code, ok = QInputDialog.getText(
+            self,
+            title,
+            "Codigo CCODDIS:",
+            QLineEdit.EchoMode.Normal,
+            ccoddis,
+        )
+        if not ok:
+            return None
+
+        name, ok = QInputDialog.getText(
+            self,
+            title,
+            "Nombre distribuidora:",
+            QLineEdit.EchoMode.Normal,
+            display_name,
+        )
+        if not ok:
+            return None
+
+        clean_notes, ok = QInputDialog.getText(
+            self,
+            title,
+            "Notas:",
+            QLineEdit.EchoMode.Normal,
+            notes,
+        )
+        if not ok:
+            return None
+
+        code = code.strip().upper()
+        name = name.strip()
+        clean_notes = clean_notes.strip()
+
+        if not code or not name:
+            QMessageBox.warning(
+                self,
+                "Catalogo G2",
+                "Codigo CCODDIS y nombre son obligatorios.",
+            )
+            return None
+
+        return code, name, clean_notes
+
+    def _create_g2_distributor(self) -> None:
+        values = self._prompt_g2_distributor_values(title="Nueva distribuidora G2")
+        if values is None:
+            return
+
+        code, name, notes = values
+        catalog_db = Path("data/catalogs/sisgen_catalogs.db")
+
+        try:
+            distributor = create_g2_distributor(
+                catalog_db,
+                ccoddis=code,
+                display_name=name,
+                notes=notes,
+                active=True,
+            )
+        except (FileNotFoundError, ValueError) as error:
+            QMessageBox.warning(self, "Catalogo G2", str(error))
+            self._append_log(f"No se pudo crear distribuidora G2: {error}")
+            return
+
+        self._append_log(
+            f"Distribuidora creada: id={distributor['id']} "
+            f"{distributor['ccoddis']} {distributor['display_name']}"
+        )
+        self._refresh_g2_catalog_table()
+
+    def _edit_selected_g2_distributor(self) -> None:
+        distributor_id = self._selected_g2_distributor_id()
+        if distributor_id is None:
+            return
+
+        row = self.g2_catalog_table.currentRow()
+        code_item = self.g2_catalog_table.item(row, 1)
+        name_item = self.g2_catalog_table.item(row, 2)
+        notes_item = self.g2_catalog_table.item(row, 4)
+
+        current_code = code_item.text() if code_item is not None else ""
+        current_name = name_item.text() if name_item is not None else ""
+        current_notes = notes_item.text() if notes_item is not None else ""
+
+        values = self._prompt_g2_distributor_values(
+            title="Editar distribuidora G2",
+            ccoddis=current_code,
+            display_name=current_name,
+            notes=current_notes,
+        )
+        if values is None:
+            return
+
+        code, name, notes = values
+        catalog_db = Path("data/catalogs/sisgen_catalogs.db")
+
+        try:
+            distributor = update_g2_distributor(
+                catalog_db,
+                distributor_id=distributor_id,
+                ccoddis=code,
+                display_name=name,
+                notes=notes,
+            )
+        except (FileNotFoundError, ValueError) as error:
+            QMessageBox.warning(self, "Catalogo G2", str(error))
+            self._append_log(f"No se pudo editar distribuidora G2: {error}")
+            return
+
+        self._append_log(
+            f"Distribuidora editada: id={distributor['id']} "
+            f"{distributor['ccoddis']} {distributor['display_name']}"
+        )
+        self._refresh_g2_catalog_table()
 
     def _set_selected_g2_active(self, active: bool) -> None:
         distributor_id = self._selected_g2_distributor_id()
@@ -760,6 +893,8 @@ class MainWindow(QMainWindow):
         self.generate_templates_button.clicked.connect(lambda: self._start_template_worker("ALL"))
         self.activate_g1_unit_button.clicked.connect(lambda: self._set_selected_g1_active(True))
         self.deactivate_g1_unit_button.clicked.connect(lambda: self._set_selected_g1_active(False))
+        self.new_g2_distributor_button.clicked.connect(self._create_g2_distributor)
+        self.edit_g2_distributor_button.clicked.connect(self._edit_selected_g2_distributor)
         self.activate_g2_distributor_button.clicked.connect(lambda: self._set_selected_g2_active(True))
         self.deactivate_g2_distributor_button.clicked.connect(lambda: self._set_selected_g2_active(False))
         self.export_g1_dbf_button.clicked.connect(lambda: self._start_export_dbf_worker("G1"))

@@ -181,3 +181,134 @@ def set_g2_distributor_active(
 
     return dict(updated)
 
+
+
+
+def _get_g2_distributor_by_id(
+    conn: sqlite3.Connection,
+    *,
+    distributor_id: int,
+) -> sqlite3.Row:
+    row = conn.execute(
+        """
+        SELECT
+            id,
+            ccoddis,
+            display_name,
+            active,
+            visible_in_txt,
+            notes
+        FROM catalog_g2_distributors
+        WHERE id = ?
+        """,
+        (distributor_id,),
+    ).fetchone()
+
+    if row is None:
+        raise ValueError(f"No existe distribuidora G2 con id={distributor_id}.")
+
+    return row
+
+
+def create_g2_distributor(
+    db_path: Path,
+    *,
+    ccoddis: str,
+    display_name: str,
+    notes: str | None = None,
+    active: bool = True,
+) -> dict[str, Any]:
+    if not db_path.exists():
+        raise FileNotFoundError(db_path)
+
+    code = ccoddis.strip().upper()
+    name = display_name.strip()
+    clean_notes = notes.strip() if notes else None
+
+    if not code:
+        raise ValueError("El codigo CCODDIS es obligatorio.")
+
+    if not name:
+        raise ValueError("El nombre de la distribuidora es obligatorio.")
+
+    with sqlite3.connect(db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        ensure_g2_schema(conn)
+
+        try:
+            cursor = conn.execute(
+                """
+                INSERT INTO catalog_g2_distributors (
+                    ccoddis,
+                    display_name,
+                    active,
+                    visible_in_txt,
+                    notes
+                )
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    code,
+                    name,
+                    1 if active else 0,
+                    1 if active else 0,
+                    clean_notes,
+                ),
+            )
+        except sqlite3.IntegrityError as error:
+            raise ValueError(f"Ya existe una distribuidora G2 con codigo {code}.") from error
+
+        distributor_id = int(cursor.lastrowid)
+        conn.commit()
+
+        row = _get_g2_distributor_by_id(conn, distributor_id=distributor_id)
+
+    return dict(row)
+
+
+def update_g2_distributor(
+    db_path: Path,
+    *,
+    distributor_id: int,
+    ccoddis: str,
+    display_name: str,
+    notes: str | None = None,
+) -> dict[str, Any]:
+    if not db_path.exists():
+        raise FileNotFoundError(db_path)
+
+    code = ccoddis.strip().upper()
+    name = display_name.strip()
+    clean_notes = notes.strip() if notes else None
+
+    if not code:
+        raise ValueError("El codigo CCODDIS es obligatorio.")
+
+    if not name:
+        raise ValueError("El nombre de la distribuidora es obligatorio.")
+
+    with sqlite3.connect(db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        ensure_g2_schema(conn)
+        _get_g2_distributor_by_id(conn, distributor_id=distributor_id)
+
+        try:
+            conn.execute(
+                """
+                UPDATE catalog_g2_distributors
+                SET
+                    ccoddis = ?,
+                    display_name = ?,
+                    notes = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """,
+                (code, name, clean_notes, distributor_id),
+            )
+        except sqlite3.IntegrityError as error:
+            raise ValueError(f"Ya existe una distribuidora G2 con codigo {code}.") from error
+
+        conn.commit()
+        row = _get_g2_distributor_by_id(conn, distributor_id=distributor_id)
+
+    return dict(row)
