@@ -6,6 +6,14 @@ from typing import Any
 
 import yaml
 
+from sisgen_automation.catalogs.g7_repository import (
+    get_g7_company,
+    get_g7_system,
+    list_g7_energy_parties,
+    list_g7_net_commitments,
+    list_g7_transfer_parties,
+)
+
 
 @dataclass(frozen=True)
 class G7Company:
@@ -200,4 +208,95 @@ def load_g7_catalog(catalog_path: Path) -> G7Catalog:
         net_commitments=net_commitments,
         power_transfers=power_transfers,
         transfer_valuations=transfer_valuations,
+    )
+
+
+def _require_non_empty_catalog_rows(rows: list[Any], section: str) -> None:
+    if not rows:
+        raise ValueError(f"La seccion G7 SQLite no tiene registros activos: {section}")
+
+
+def load_g7_catalog_from_db(catalog_db_path: Path) -> G7Catalog:
+    company_row = get_g7_company(catalog_db_path)
+    system_row = get_g7_system(catalog_db_path)
+
+    energy_purchase_rows = list_g7_energy_parties(
+        catalog_db_path,
+        section="energy_purchases",
+        active_only=True,
+        visible_only=True,
+    )
+    energy_sale_rows = list_g7_energy_parties(
+        catalog_db_path,
+        section="energy_sales",
+        active_only=True,
+        visible_only=True,
+    )
+    net_commitment_rows = list_g7_net_commitments(
+        catalog_db_path,
+        active_only=True,
+        visible_only=True,
+    )
+    power_transfer_rows = list_g7_transfer_parties(
+        catalog_db_path,
+        section="power_transfers",
+        active_only=True,
+        visible_only=True,
+    )
+    transfer_valuation_rows = list_g7_transfer_parties(
+        catalog_db_path,
+        section="transfer_valuations",
+        active_only=True,
+        visible_only=True,
+    )
+
+    _require_non_empty_catalog_rows(energy_purchase_rows, "energy_purchases")
+    _require_non_empty_catalog_rows(energy_sale_rows, "energy_sales")
+    _require_non_empty_catalog_rows(net_commitment_rows, "net_commitments")
+    _require_non_empty_catalog_rows(power_transfer_rows, "power_transfers")
+    _require_non_empty_catalog_rows(transfer_valuation_rows, "transfer_valuations")
+
+    return G7Catalog(
+        company=G7Company(
+            ccodeemp=str(company_row["ccodeemp"]),
+            name=str(company_row["name"]),
+        ),
+        system=G7System(
+            ccosisi=str(system_row["ccosisi"]),
+        ),
+        energy_purchases=[
+            G7EnergyParty(
+                ccodgen=str(row["ccodgen"]),
+                cdesgen=str(row["cdesgen"]),
+            )
+            for row in energy_purchase_rows
+        ],
+        energy_sales=[
+            G7EnergyParty(
+                ccodgen=str(row["ccodgen"]),
+                cdesgen=str(row["cdesgen"]),
+            )
+            for row in energy_sale_rows
+        ],
+        net_commitments=[
+            G7NetCommitmentParty(
+                ccoddis=str(row["ccoddis"]),
+                cnomdis=str(row["cnomdis"]),
+            )
+            for row in net_commitment_rows
+        ],
+        power_transfers=[
+            G7TransferParty(
+                ccodgen=str(row["ccodgen"]),
+                cnomgen=str(row["cnomgen"]),
+            )
+            for row in power_transfer_rows
+        ],
+        transfer_valuations=[
+            G7TransferParty(
+                ccodgen=str(row["ccodgen"]),
+                cnomgen=str(row["cnomgen"]),
+            )
+            for row in transfer_valuation_rows
+        ],
     )

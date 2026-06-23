@@ -539,16 +539,21 @@ def register_g7_commands(app: typer.Typer, console: Console) -> None:
             "-p",
             help="Periodo a validar en formato YYYY-MM. Ejemplo: 2026-01.",
         ),
-        catalog: Path = typer.Option(
-            ...,
+        catalog: Optional[Path] = typer.Option(
+            None,
             "--catalog",
             "-c",
-            help="Ruta del catálogo local G7 en YAML.",
+            help="Ruta del catalogo local G7 en YAML.",
+        ),
+        catalog_db: Optional[Path] = typer.Option(
+            None,
+            "--catalog-db",
+            help="Ruta de la base SQLite de catalogos.",
         ),
         fail_on_errors: bool = typer.Option(
             False,
             "--fail-on-errors",
-            help="Termina con código de error si se encuentran errores.",
+            help="Termina con c?digo de error si se encuentran errores.",
         ),
     ) -> None:
         """Valida los cinco DBF fuente del Formato G7."""
@@ -561,6 +566,7 @@ def register_g7_commands(app: typer.Typer, console: Console) -> None:
                 valene_path=valene,
                 period=period,
                 catalog_path=catalog,
+                catalog_db_path=catalog_db,
             )
         except ValueError as error:
             console.print(f"[bold red]Error:[/bold red] {error}")
@@ -570,6 +576,7 @@ def register_g7_commands(app: typer.Typer, console: Console) -> None:
 
         if fail_on_errors and result.has_errors:
             raise typer.Exit(code=1)
+
 
     @app.command("create-g7-txt")
     def create_g7_txt_command(
@@ -604,11 +611,16 @@ def register_g7_commands(app: typer.Typer, console: Console) -> None:
             "-p",
             help="Periodo a generar en formato YYYY-MM. Ejemplo: 2026-01.",
         ),
-        catalog: Path = typer.Option(
-            ...,
+        catalog: Optional[Path] = typer.Option(
+            None,
             "--catalog",
             "-c",
-            help="Ruta del catálogo local G7 en YAML.",
+            help="Ruta del catalogo local G7 en YAML.",
+        ),
+        catalog_db: Optional[Path] = typer.Option(
+            None,
+            "--catalog-db",
+            help="Ruta de la base SQLite de catalogos.",
         ),
         output: Optional[Path] = typer.Option(
             None,
@@ -627,6 +639,7 @@ def register_g7_commands(app: typer.Typer, console: Console) -> None:
                 valene_path=valene,
                 period=period,
                 catalog_path=catalog,
+                catalog_db_path=catalog_db,
                 output_path=output,
             )
         except ValueError as error:

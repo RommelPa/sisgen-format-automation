@@ -5,7 +5,7 @@ from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
-from sisgen_automation.g7.catalog import load_g7_catalog
+from sisgen_automation.g7.catalog import load_g7_catalog, load_g7_catalog_from_db
 from sisgen_automation.g7.sources import (
     G7EnergyRow,
     G7NetCommitmentRow,
@@ -237,7 +237,8 @@ def create_g7_txt(
     traene_path: Path,
     valene_path: Path,
     period: str,
-    catalog_path: Path,
+    catalog_path: Path | None = None,
+    catalog_db_path: Path | None = None,
     output_path: Path | None = None,
 ) -> G7TxtResult:
     validation = validate_g7_sources(
@@ -248,6 +249,7 @@ def create_g7_txt(
         valene_path=valene_path,
         period=period,
         catalog_path=catalog_path,
+        catalog_db_path=catalog_db_path,
     )
 
     if validation.has_errors:
@@ -261,7 +263,13 @@ def create_g7_txt(
             f"\n{preview}"
         )
 
-    catalog = load_g7_catalog(catalog_path)
+    if catalog_db_path is not None:
+        catalog = load_g7_catalog_from_db(catalog_db_path)
+    elif catalog_path is not None:
+        catalog = load_g7_catalog(catalog_path)
+    else:
+        raise ValueError("Debe indicar catalog_path o catalog_db_path para G7.")
+
     year, month = _period_parts(period)
 
     if output_path is None:

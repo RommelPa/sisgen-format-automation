@@ -8,7 +8,7 @@ from typing import Any
 
 from dbfread import DBF  # type: ignore[import-untyped]
 
-from sisgen_automation.g7.catalog import G7Catalog, load_g7_catalog
+from sisgen_automation.g7.catalog import G7Catalog, load_g7_catalog, load_g7_catalog_from_db
 
 
 DBF_ENCODING = "cp850"
@@ -650,9 +650,15 @@ def validate_g7_sources(
     traene_path: Path,
     valene_path: Path,
     period: str,
-    catalog_path: Path,
+    catalog_path: Path | None = None,
+    catalog_db_path: Path | None = None,
 ) -> G7SourcesValidationResult:
-    catalog = load_g7_catalog(catalog_path)
+    if catalog_db_path is not None:
+        catalog = load_g7_catalog_from_db(catalog_db_path)
+    elif catalog_path is not None:
+        catalog = load_g7_catalog(catalog_path)
+    else:
+        raise ValueError("Debe indicar catalog_path o catalog_db_path para G7.")
     issues: list[G7SourceIssue] = []
 
     comene_records = _read_period_records(comene_path, period)
