@@ -9,7 +9,7 @@ from dbfread import DBF  # type: ignore[import-untyped]
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Protection, Side
 
-from sisgen_automation.g2.catalog import load_g2_catalog
+from sisgen_automation.g2.catalog import load_g2_catalog, load_g2_catalog_from_db
 
 
 VEPOEN_HEADERS = [
@@ -190,12 +190,20 @@ def create_vepoen_template(
     *,
     period: str,
     source_dbf_path: Path,
-    catalog_path: Path,
+    catalog_path: Path | None = None,
+    catalog_db_path: Path | None = None,
     base_period: str | None = None,
     output_path: Path | None = None,
 ) -> VepoenTemplateResult:
     year_short, month = parse_period(period)
-    catalog = load_g2_catalog(catalog_path)
+
+    if catalog_db_path is not None and catalog_db_path.exists():
+        catalog = load_g2_catalog_from_db(catalog_db_path)
+    else:
+        if catalog_path is None:
+            raise ValueError("Se requiere catalog_path o catalog_db_path para plantilla VEPOEN.")
+
+        catalog = load_g2_catalog(catalog_path)
 
     rows = _read_vepoen_rows(source_dbf_path)
 

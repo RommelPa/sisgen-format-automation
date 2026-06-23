@@ -8,7 +8,7 @@ from typing import Any
 
 from openpyxl import load_workbook
 
-from sisgen_automation.g2.catalog import load_g2_catalog
+from sisgen_automation.g2.catalog import load_g2_catalog, load_g2_catalog_from_db
 from sisgen_automation.g2.template import VEPOEN_HEADERS, parse_period
 
 
@@ -166,13 +166,21 @@ def validate_vepoen_template(
     *,
     template_path: Path,
     period: str,
-    catalog_path: Path,
+    catalog_path: Path | None = None,
+    catalog_db_path: Path | None = None,
 ) -> VepoenTemplateValidationResult:
     if not template_path.exists():
         raise ValueError(f"No existe la plantilla VEPOEN: {template_path}")
 
     expected_year, expected_month = parse_period(period)
-    catalog = load_g2_catalog(catalog_path)
+
+    if catalog_db_path is not None and catalog_db_path.exists():
+        catalog = load_g2_catalog_from_db(catalog_db_path)
+    else:
+        if catalog_path is None:
+            raise ValueError("Se requiere catalog_path o catalog_db_path para validar VEPOEN.")
+
+        catalog = load_g2_catalog(catalog_path)
 
     workbook = load_workbook(template_path, data_only=True)
     sheet = workbook.active
