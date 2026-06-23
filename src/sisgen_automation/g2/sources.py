@@ -7,7 +7,7 @@ from typing import Literal
 
 from dbfread import DBF  # type: ignore[import-untyped]
 
-from sisgen_automation.g2.catalog import load_g2_catalog
+from sisgen_automation.g2.catalog import load_g2_catalog, load_g2_catalog_from_db
 
 
 IssueSeverity = Literal["ERROR", "WARNING"]
@@ -147,11 +147,21 @@ def _decimal_or_zero(value: object) -> Decimal:
 def validate_g2_sources(
     *,
     vepoen_path: Path,
-    catalog_path: Path,
     period: str,
+    catalog_path: Path | None = None,
+    catalog_db_path: Path | None = None,
 ) -> G2SourcesValidationResult:
     expected_year, expected_month = parse_period(period)
-    catalog = load_g2_catalog(catalog_path)
+
+    if catalog_db_path is not None and catalog_db_path.exists():
+        catalog = load_g2_catalog_from_db(catalog_db_path)
+        effective_catalog_path = catalog_db_path
+    else:
+        if catalog_path is None:
+            raise ValueError("Se requiere catalog_path o catalog_db_path para validar G2.")
+
+        catalog = load_g2_catalog(catalog_path)
+        effective_catalog_path = catalog_path
 
     if not vepoen_path.exists():
         raise ValueError(f"No existe VEPOEN.DBF: {vepoen_path}")
@@ -281,7 +291,7 @@ def validate_g2_sources(
 
     return G2SourcesValidationResult(
         vepoen_path=vepoen_path,
-        catalog_path=catalog_path,
+        catalog_path=effective_catalog_path,
         period=period,
         rows=rows,
         issues=issues,
