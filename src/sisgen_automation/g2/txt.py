@@ -293,13 +293,15 @@ def create_g2_txt(
     *,
     vepoen_path: Path,
     period: str,
-    catalog_path: Path,
+    catalog_path: Path | None = None,
+    catalog_db_path: Path | None = None,
     output_path: Path | None = None,
 ) -> G2TxtResult:
     validation = validate_g2_sources(
         vepoen_path=vepoen_path,
-        catalog_path=catalog_path,
         period=period,
+        catalog_path=catalog_path,
+        catalog_db_path=catalog_db_path,
     )
 
     if validation.has_errors:
