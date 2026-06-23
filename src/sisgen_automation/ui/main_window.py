@@ -63,7 +63,6 @@ class MainWindow(QMainWindow):
         self.report_dbf_dir_input = QLineEdit(str(Path("reports/dbf/2025-12")))
         self.output_dir_input = QLineEdit(str(Path("reports/txt/2025-12")))
         self.u2_catalog_input = QLineEdit(str(Path("config/local/u2_ciiu.yaml")))
-        self.g2_catalog_input = QLineEdit(str(Path("config/local/g2_distributors.yaml")))
         self.g7_catalog_input = QLineEdit(str(Path("config/local/g7_units.yaml")))
         self.g8_catalog_input = QLineEdit(str(Path("config/local/g8_clients.yaml")))
         self.g11_catalog_input = QLineEdit(str(Path("config/local/g11_units.yaml")))
@@ -345,10 +344,6 @@ class MainWindow(QMainWindow):
         form.addRow(
             "Catálogo U2:",
             self._path_row(self.u2_catalog_input, self._select_u2_catalog),
-        )
-        form.addRow(
-            "Catálogo G2:",
-            self._path_row(self.g2_catalog_input, self._select_g2_catalog),
         )
         form.addRow(
             "Catálogo G7:",
@@ -703,9 +698,6 @@ class MainWindow(QMainWindow):
     def _select_u2_catalog(self) -> None:
         self._select_file(self.u2_catalog_input, "YAML (*.yaml *.yml)")
 
-    def _select_g2_catalog(self) -> None:
-        self._select_file(self.g2_catalog_input, "YAML (*.yaml *.yml)")
-
     def _select_g7_catalog(self) -> None:
         self._select_file(self.g7_catalog_input, "YAML (*.yaml *.yml)")
 
@@ -751,7 +743,7 @@ class MainWindow(QMainWindow):
             g1_catalog_db=Path("data/catalogs/sisgen_catalogs.db"),
             g2_catalog_db=Path("data/catalogs/sisgen_catalogs.db"),
             u2_catalog=Path(self.u2_catalog_input.text().strip()),
-            g2_catalog=Path(self.g2_catalog_input.text().strip()),
+            g2_catalog=Path("config/local/g2_distributors.yaml"),
             g7_catalog=Path(self.g7_catalog_input.text().strip()),
             g8_catalog=Path(self.g8_catalog_input.text().strip()),
             g11_catalog=Path(self.g11_catalog_input.text().strip()),
@@ -789,7 +781,7 @@ class MainWindow(QMainWindow):
             cenhid_catalog=Path("config/local/cenhid_units.yaml"),
             center_catalog=Path("config/local/center_units.yaml"),
             u2_catalog=Path(self.u2_catalog_input.text().strip()),
-            g2_catalog=Path(self.g2_catalog_input.text().strip()),
+            g2_catalog=Path("config/local/g2_distributors.yaml"),
             g7_catalog=Path(self.g7_catalog_input.text().strip()),
             g8_catalog=Path(self.g8_catalog_input.text().strip()),
             g11_catalog=Path(self.g11_catalog_input.text().strip()),
@@ -859,7 +851,7 @@ class MainWindow(QMainWindow):
             period=self.period_input.text().strip(),
             vepoen_path=Path(self.report_dbf_dir_input.text().strip()) / "VEPOEN.DBF",
             output_dir=Path(self.output_dir_input.text().strip()),
-            g2_catalog=Path(self.g2_catalog_input.text().strip()),
+            g2_catalog=Path("config/local/g2_distributors.yaml"),
             g2_catalog_db=Path("data/catalogs/sisgen_catalogs.db"),
         )
 
