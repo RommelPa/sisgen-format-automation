@@ -115,3 +115,69 @@ def list_g2_distributors(
         rows = conn.execute(query, params).fetchall()
 
     return [dict(row) for row in rows]
+
+
+def set_g2_distributor_active(
+    db_path: Path,
+    *,
+    distributor_id: int,
+    active: bool,
+) -> dict[str, Any]:
+    if not db_path.exists():
+        raise FileNotFoundError(db_path)
+
+    with sqlite3.connect(db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        ensure_g2_schema(conn)
+
+        row = conn.execute(
+            """
+            SELECT
+                id,
+                ccoddis,
+                display_name,
+                active,
+                visible_in_txt,
+                notes
+            FROM catalog_g2_distributors
+            WHERE id = ?
+            """,
+            (distributor_id,),
+        ).fetchone()
+
+        if row is None:
+            raise ValueError(f"No existe distribuidora G2 con id={distributor_id}.")
+
+        conn.execute(
+            """
+            UPDATE catalog_g2_distributors
+            SET
+                active = ?,
+                visible_in_txt = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (1 if active else 0, 1 if active else 0, distributor_id),
+        )
+        conn.commit()
+
+        updated = conn.execute(
+            """
+            SELECT
+                id,
+                ccoddis,
+                display_name,
+                active,
+                visible_in_txt,
+                notes
+            FROM catalog_g2_distributors
+            WHERE id = ?
+            """,
+            (distributor_id,),
+        ).fetchone()
+
+    if updated is None:
+        raise ValueError(f"No se pudo actualizar distribuidora G2 con id={distributor_id}.")
+
+    return dict(updated)
+

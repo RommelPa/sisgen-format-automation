@@ -26,6 +26,10 @@ from sisgen_automation.catalogs.g1_repository import (
     list_g1_units,
     set_g1_unit_active,
 )
+from sisgen_automation.catalogs.g2_repository import (
+    list_g2_distributors,
+    set_g2_distributor_active,
+)
 from sisgen_automation.ui.workers.export_dbf import ExportDbfWorker
 from sisgen_automation.ui.workers.g1 import G1Worker
 from sisgen_automation.ui.workers.g11 import G11Worker
@@ -87,6 +91,8 @@ class MainWindow(QMainWindow):
         self.generate_templates_button = QPushButton("Generar todas")
         self.activate_g1_unit_button = QPushButton("Activar")
         self.deactivate_g1_unit_button = QPushButton("Desactivar")
+        self.activate_g2_distributor_button = QPushButton("Activar")
+        self.deactivate_g2_distributor_button = QPushButton("Desactivar")
         self.export_g1_dbf_button = QPushButton("Exportar G1")
         self.export_g2_dbf_button = QPushButton("Exportar G2")
         self.export_g7_dbf_button = QPushButton("Exportar G7")
@@ -109,6 +115,18 @@ class MainWindow(QMainWindow):
             "Activo",
         ])
         self.g1_catalog_table.setEditTriggers(
+            QAbstractItemView.EditTrigger.NoEditTriggers
+        )
+
+        self.g2_catalog_table = QTableWidget(0, 5)
+        self.g2_catalog_table.setHorizontalHeaderLabels([
+            "ID",
+            "Codigo",
+            "Distribuidora",
+            "Activo",
+            "Notas",
+        ])
+        self.g2_catalog_table.setEditTriggers(
             QAbstractItemView.EditTrigger.NoEditTriggers
         )
 
@@ -155,6 +173,8 @@ class MainWindow(QMainWindow):
             self.validate_g11_button,
             self.activate_g1_unit_button,
             self.deactivate_g1_unit_button,
+            self.activate_g2_distributor_button,
+            self.deactivate_g2_distributor_button,
         ]
 
         for button in primary_buttons:
@@ -303,6 +323,7 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self._build_prepare_dbf_tab(), "2. Preparar DBF")
         self.tabs.addTab(self._build_txt_tab(), "3. Generar TXT")
         self.tabs.addTab(self._build_g1_catalog_tab(), "4. Catalogo G1")
+        self.tabs.addTab(self._build_g2_catalog_tab(), "5. Catalogo G2")
         self.tabs.addTab(self._build_logs_tab(), "Logs")
 
         self.setCentralWidget(root)
@@ -588,6 +609,104 @@ class MainWindow(QMainWindow):
         )
         self._refresh_g1_catalog_table()
 
+    def _build_g2_catalog_tab(self) -> QWidget:
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+
+        title = QLabel("Catalogo G2")
+        title.setStyleSheet("font-size: 18px; font-weight: bold;")
+
+        description = QLabel(
+            "Gestiona las distribuidoras VEPOEN cargadas en el catalogo local SQLite. "
+            "Usa Activar/Desactivar para controlar si una distribuidora participa en la generacion."
+        )
+        description.setWordWrap(True)
+
+        actions = QHBoxLayout()
+        actions.addWidget(self.activate_g2_distributor_button)
+        actions.addWidget(self.deactivate_g2_distributor_button)
+        actions.addStretch()
+
+        layout.addWidget(title)
+        layout.addWidget(description)
+        layout.addLayout(actions)
+        layout.addWidget(self.g2_catalog_table)
+
+        self._refresh_g2_catalog_table()
+
+        return tab
+
+    def _refresh_g2_catalog_table(self) -> None:
+        catalog_db = Path("data/catalogs/sisgen_catalogs.db")
+        self.g2_catalog_table.setRowCount(0)
+
+        if not catalog_db.exists():
+            self._append_log(
+                "Catalogo G2 SQLite no encontrado. Ejecuta primero la migracion YAML -> SQLite."
+            )
+            return
+
+        rows = list_g2_distributors(catalog_db)
+        self.g2_catalog_table.setRowCount(len(rows))
+
+        for row_index, row in enumerate(rows):
+            values = [
+                row["id"],
+                row["ccoddis"],
+                row["display_name"],
+                "si" if row["active"] else "no",
+                row["notes"] or "",
+            ]
+
+            for column_index, value in enumerate(values):
+                self.g2_catalog_table.setItem(
+                    row_index,
+                    column_index,
+                    QTableWidgetItem(str(value)),
+                )
+
+        self.g2_catalog_table.resizeColumnsToContents()
+        self._append_log(f"Catalogo G2 cargado: {len(rows)} distribuidoras.")
+
+    def _selected_g2_distributor_id(self) -> int | None:
+        row = self.g2_catalog_table.currentRow()
+        if row < 0:
+            self._append_log("Selecciona una distribuidora del Catalogo G2.")
+            return None
+
+        item = self.g2_catalog_table.item(row, 0)
+        if item is None:
+            self._append_log("No se pudo leer el ID de la distribuidora seleccionada.")
+            return None
+
+        try:
+            return int(item.text())
+        except ValueError:
+            self._append_log(f"ID de distribuidora invalido: {item.text()}")
+            return None
+
+    def _set_selected_g2_active(self, active: bool) -> None:
+        distributor_id = self._selected_g2_distributor_id()
+        if distributor_id is None:
+            return
+
+        catalog_db = Path("data/catalogs/sisgen_catalogs.db")
+        if not catalog_db.exists():
+            self._append_log("Catalogo G2 SQLite no encontrado.")
+            return
+
+        distributor = set_g2_distributor_active(
+            catalog_db,
+            distributor_id=distributor_id,
+            active=active,
+        )
+        action = "activada" if active else "desactivada"
+        self._append_log(
+            f"Distribuidora {action}: id={distributor['id']} "
+            f"{distributor['ccoddis']} {distributor['display_name']}"
+        )
+        self._refresh_g2_catalog_table()
+
     def _build_logs_tab(self) -> QWidget:
         tab = QWidget()
         layout = QVBoxLayout(tab)
@@ -641,6 +760,8 @@ class MainWindow(QMainWindow):
         self.generate_templates_button.clicked.connect(lambda: self._start_template_worker("ALL"))
         self.activate_g1_unit_button.clicked.connect(lambda: self._set_selected_g1_active(True))
         self.deactivate_g1_unit_button.clicked.connect(lambda: self._set_selected_g1_active(False))
+        self.activate_g2_distributor_button.clicked.connect(lambda: self._set_selected_g2_active(True))
+        self.deactivate_g2_distributor_button.clicked.connect(lambda: self._set_selected_g2_active(False))
         self.export_g1_dbf_button.clicked.connect(lambda: self._start_export_dbf_worker("G1"))
         self.export_g2_dbf_button.clicked.connect(lambda: self._start_export_dbf_worker("G2"))
         self.export_g7_dbf_button.clicked.connect(lambda: self._start_export_dbf_worker("G7"))
