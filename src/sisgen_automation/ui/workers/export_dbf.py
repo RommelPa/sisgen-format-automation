@@ -59,6 +59,7 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
         u2_catalog: Path,
         g2_catalog: Path,
         g7_catalog: Path,
+        g7_catalog_db: Path | None = None,
         g8_catalog: Path,
         g11_catalog: Path,
         g1_catalog_db: Path | None = None,
@@ -75,6 +76,7 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
         self.u2_catalog = u2_catalog
         self.g2_catalog = g2_catalog
         self.g7_catalog = g7_catalog
+        self.g7_catalog_db = g7_catalog_db
         self.g8_catalog = g8_catalog
         self.g11_catalog = g11_catalog
         self.g1_catalog_db = g1_catalog_db
@@ -324,74 +326,103 @@ class ExportDbfWorker(QObject, WorkerFileMixin):
             self._ensure_file(self._source_path(name))
             self._ensure_file(self._template_path(name))
 
-        self._ensure_file(self.g7_catalog)
+        g7_catalog_db = (
+            self.g7_catalog_db
+            if self.g7_catalog_db is not None and self.g7_catalog_db.exists()
+            else None
+        )
+        if g7_catalog_db is not None:
+            self.log.emit(f"Catalogo G7 SQLite: {g7_catalog_db}")
+        else:
+            self._ensure_file(self.g7_catalog)
+            self.log.emit(f"Catalogo G7 YAML: {self.g7_catalog}")
 
         results = [
             ("COMENE", validate_comene_template(
                 template_path=self._template_path("COMENE"),
                 period=self.period,
-                catalog_path=self.g7_catalog,
+                catalog_path=None if g7_catalog_db is not None else self.g7_catalog,
+                catalog_db_path=g7_catalog_db,
             )),
             ("VENENE", validate_venene_template(
                 template_path=self._template_path("VENENE"),
                 period=self.period,
-                catalog_path=self.g7_catalog,
+                catalog_path=None if g7_catalog_db is not None else self.g7_catalog,
+                catalog_db_path=g7_catalog_db,
             )),
             ("COMNET", validate_comnet_template(
                 template_path=self._template_path("COMNET"),
                 period=self.period,
-                catalog_path=self.g7_catalog,
+                catalog_path=None if g7_catalog_db is not None else self.g7_catalog,
+                catalog_db_path=g7_catalog_db,
             )),
             ("TRAENE", validate_traene_template(
                 template_path=self._template_path("TRAENE"),
                 period=self.period,
-                catalog_path=self.g7_catalog,
+                catalog_path=None if g7_catalog_db is not None else self.g7_catalog,
+                catalog_db_path=g7_catalog_db,
             )),
             ("VALENE", validate_valene_template(
                 template_path=self._template_path("VALENE"),
                 period=self.period,
-                catalog_path=self.g7_catalog,
+                catalog_path=None if g7_catalog_db is not None else self.g7_catalog,
+                catalog_db_path=g7_catalog_db,
             )),
         ]
 
         return all(self._validate_result(name, result) for name, result in results)
 
     def _export_g7(self) -> list[str]:
+        g7_catalog_db = (
+            self.g7_catalog_db
+            if self.g7_catalog_db is not None and self.g7_catalog_db.exists()
+            else None
+        )
+        if g7_catalog_db is not None:
+            self.log.emit(f"Catalogo G7 SQLite: {g7_catalog_db}")
+        else:
+            self._ensure_file(self.g7_catalog)
+            self.log.emit(f"Catalogo G7 YAML: {self.g7_catalog}")
         exported = []
 
         exported.append(self._export_result("COMENE", lambda: export_comene_dbf(
             source_dbf_path=self._source_path("COMENE"),
             template_path=self._template_path("COMENE"),
             period=self.period,
-            catalog_path=self.g7_catalog,
+            catalog_path=None if g7_catalog_db is not None else self.g7_catalog,
+                catalog_db_path=g7_catalog_db,
             output_path=self.output_dbf_dir / "COMENE.DBF",
         )))
         exported.append(self._export_result("VENENE", lambda: export_venene_dbf(
             source_dbf_path=self._source_path("VENENE"),
             template_path=self._template_path("VENENE"),
             period=self.period,
-            catalog_path=self.g7_catalog,
+            catalog_path=None if g7_catalog_db is not None else self.g7_catalog,
+                catalog_db_path=g7_catalog_db,
             output_path=self.output_dbf_dir / "VENENE.DBF",
         )))
         exported.append(self._export_result("COMNET", lambda: export_comnet_dbf(
             source_dbf_path=self._source_path("COMNET"),
             template_path=self._template_path("COMNET"),
             period=self.period,
-            catalog_path=self.g7_catalog,
+            catalog_path=None if g7_catalog_db is not None else self.g7_catalog,
+                catalog_db_path=g7_catalog_db,
             output_path=self.output_dbf_dir / "COMNET.DBF",
         )))
         exported.append(self._export_result("TRAENE", lambda: export_traene_dbf(
             source_dbf_path=self._source_path("TRAENE"),
             template_path=self._template_path("TRAENE"),
             period=self.period,
-            catalog_path=self.g7_catalog,
+            catalog_path=None if g7_catalog_db is not None else self.g7_catalog,
+                catalog_db_path=g7_catalog_db,
             output_path=self.output_dbf_dir / "TRAENE.DBF",
         )))
         exported.append(self._export_result("VALENE", lambda: export_valene_dbf(
             source_dbf_path=self._source_path("VALENE"),
             template_path=self._template_path("VALENE"),
             period=self.period,
-            catalog_path=self.g7_catalog,
+            catalog_path=None if g7_catalog_db is not None else self.g7_catalog,
+                catalog_db_path=g7_catalog_db,
             output_path=self.output_dbf_dir / "VALENE.DBF",
         )))
 

@@ -1265,6 +1265,7 @@ class MainWindow(QMainWindow):
             u2_catalog=Path(self.u2_catalog_input.text().strip()),
             g2_catalog=Path("config/local/g2_distributors.yaml"),
             g7_catalog=Path(self.g7_catalog_input.text().strip()),
+            g7_catalog_db=Path("data/catalogs/sisgen_catalogs.db"),
             g8_catalog=Path(self.g8_catalog_input.text().strip()),
             g11_catalog=Path(self.g11_catalog_input.text().strip()),
             g1_catalog_db=Path("data/catalogs/sisgen_catalogs.db"),
